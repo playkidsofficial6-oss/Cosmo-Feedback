@@ -322,8 +322,7 @@ export interface TodayStats {
   returningPatients: number;
 }
 
-export const getTodayStats = (): TodayStats => {
-  const db = getDatabase();
+export const getTodayStats = (db: Patient[]): TodayStats => {
   const todayStr = new Date().toISOString().split('T')[0];
   const todays = db.filter(p => p.visitDate === todayStr);
 
@@ -358,8 +357,7 @@ export interface MarketingSourceStat {
   count: number;
 }
 
-export const getMarketingAnalytics = (): MarketingSourceStat[] => {
-  const db = getDatabase();
+export const getMarketingAnalytics = (db: Patient[]): MarketingSourceStat[] => {
   // Filter only those that have a marketing source filled
   const sourcesMap: Record<string, number> = {};
   
@@ -388,8 +386,7 @@ export interface DoctorStat {
   averageRating: number;
 }
 
-export const getDoctorAnalytics = (): DoctorStat[] => {
-  const db = getDatabase();
+export const getDoctorAnalytics = (db: Patient[]): DoctorStat[] => {
   const doctorMap: Record<string, { patients: number; reviews: number; starsSum: number }> = {};
   
   DOCTORS.forEach(doc => {
@@ -425,8 +422,7 @@ export interface SourceAttributionStat {
   reviewCount: number;
 }
 
-export const getSourceAnalytics = (): SourceAttributionStat[] => {
-  const db = getDatabase();
+export const getSourceAnalytics = (db: Patient[]): SourceAttributionStat[] => {
   const sourceMetrics: Record<string, { patients: number; reviews: number }> = {};
   
   MARKETING_SOURCES.forEach(src => {

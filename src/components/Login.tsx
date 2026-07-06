@@ -1,35 +1,38 @@
 import React, { useState } from 'react';
-
-interface Props {
-  onLogin: (role: 'reception' | 'manager' | 'admin', name: string) => void;
-}
+import { useNavigate } from 'react-router-dom';
+import Cookies from 'js-cookie';
+import { api } from '../services/api';
 
 const ROLES = [
-  { key: 'reception' as const, label: 'Reception', pin: '1234', name: 'Receptionist' },
-  { key: 'manager'  as const, label: 'Manager',   pin: '5678', name: 'Clinic Manager' },
-  { key: 'admin'    as const, label: 'Admin',      pin: '0000', name: 'Admin'          },
+  { key: 'reception' as const, label: 'Reception', name: 'Receptionist' },
+  { key: 'manager'  as const, label: 'Manager',   name: 'Clinic Manager' },
+  { key: 'admin'    as const, label: 'Admin',      name: 'Admin'          },
 ];
 
-export function Login({ onLogin }: Props) {
+export function Login() {
   const [roleIdx, setRoleIdx] = useState(0);
   const [pin, setPin]         = useState('');
   const [error, setError]     = useState('');
+  const navigate = useNavigate();
 
   const role = ROLES[roleIdx];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (pin === role.pin) {
-      onLogin(role.key, role.name);
-    } else {
+    try {
+      const response = await api.post('/auth/login', {
+        username: role.key,
+        password: pin
+      });
+      
+      if (response.data && response.data.user) {
+        Cookies.set('user', JSON.stringify({ ...response.data.user, name: role.name }), { expires: 1 });
+        navigate('/dashboard');
+      }
+    } catch (err: any) {
       setError('Incorrect PIN. Please try again.');
       setPin('');
     }
-  };
-
-  const handleQuick = (idx: number) => {
-    const r = ROLES[idx];
-    onLogin(r.key, r.name);
   };
 
   return (
@@ -70,16 +73,6 @@ export function Login({ onLogin }: Props) {
             Sign In
           </button>
         </form>
-
-        <p className="login-divider">Quick Access (Demo)</p>
-        <div className="quick-logins">
-          {ROLES.map((r, i) => (
-            <button key={r.key} id={`quick-${r.key}`} className="quick-btn" onClick={() => handleQuick(i)}>
-              <span>{r.label}</span>
-              <span>PIN: {r.pin}</span>
-            </button>
-          ))}
-        </div>
       </div>
     </div>
   );

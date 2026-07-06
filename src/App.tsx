@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import {
-  getDatabase, checkoutPatient, createPatient, resetDatabase,
-  getDoctorList, getTreatmentList
-} from './services/db';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import Cookies from 'js-cookie';
+import useSWR from 'swr';
+import { api, fetcher } from './services/api';
 import type { Patient } from './services/db';
+import { getDoctorList, getTreatmentList } from './services/db';
 import { Login }            from './components/Login';
 import { PatientCard }      from './components/PatientCard';
 import { ReviewForm }       from './components/ReviewForm';
@@ -12,18 +13,21 @@ import { Dashboard }        from './components/Dashboard';
 import { SearchSystem }     from './components/SearchSystem';
 
 type View = 'checkout' | 'directory' | 'dashboard';
-type Role = 'reception' | 'manager' | 'admin';
 
-export default function App() {
-  const [role,      setRole]      = useState<Role | null>(null);
-  const [staffName, setStaffName] = useState('');
-  const [view,      setView]      = useState<View>('checkout');
+function MainApp() {
+  const navigate = useNavigate();
+  const userCookie = Cookies.get('user');
+  const user = userCookie ? JSON.parse(userCookie) : null;
+  const role = user?.role;
+  const staffName = user?.name;
 
-  const [patients,      setPatients]      = useState<Patient[]>([]);
+  const [view, setView] = useState<View>(role === 'reception' ? 'checkout' : 'dashboard');
   const [activePatient, setActivePatient] = useState<Patient | null>(null);
-  const [reviewUrl,     setReviewUrl]     = useState(
+  const [reviewUrl, setReviewUrl] = useState(
     'https://search.google.com/local/writereview?placeid=ChIJiQ139bN1RDkR8eKj2_tD_r0'
   );
+
+  const { data: patients = [], mutate } = useSWR<Patient[]>('/patients', fetcher);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [newName,      setNewName]      = useState('');
@@ -40,47 +44,55 @@ export default function App() {
   };
 
   useEffect(() => {
-    const db = getDatabase();
-    setPatients(db);
-    const todayStr = new Date().toISOString().split('T')[0];
-    const first = db.find(p => p.visitDate === todayStr && p.reviewStatus === 'Pending')
-                ?? db.find(p => p.reviewStatus === 'Pending');
-    if (first) setActivePatient(first);
-  }, []);
+    if (!user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
 
-  const handleLogin = (r: Role, name: string) => {
-    setRole(r);
-    setStaffName(name);
-    setView(r === 'reception' ? 'checkout' : 'dashboard');
+  useEffect(() => {
+    if (!activePatient && patients.length > 0) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const first = patients.find(p => p.visitDate === todayStr && p.reviewStatus === 'Pending')
+                  ?? patients.find(p => p.reviewStatus === 'Pending');
+      if (first) setActivePatient(first);
+    }
+  }, [patients, activePatient]);
+
+  if (!user) return null;
+
+  const handleLogout = () => {
+    Cookies.remove('user');
+    navigate('/');
   };
 
-  const handleLogout = () => { setRole(null); setStaffName(''); };
-
-  const handleSave = (id: string, updates: Partial<Patient>) => {
-    const updated = checkoutPatient(id, updates);
-    const db = getDatabase();
-    setPatients(db);
+  const handleSave = async (id: string, updates: Partial<Patient>) => {
+    const res = await api.put(`/patients/${id}`, { ...updates, checkoutTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+    const updated = res.data;
+    await mutate();
     showToast(`Check-out saved — ${updated.name}`);
+    
+    // Attempt to set next patient
     const todayStr = new Date().toISOString().split('T')[0];
-    const next = db.find(p => p.visitDate === todayStr && p.reviewStatus === 'Pending' && p.id !== id)
-              ?? db.find(p => p.reviewStatus === 'Pending' && p.id !== id);
+    const freshDb = await fetcher('/patients');
+    const next = freshDb.find((p: any) => p.visitDate === todayStr && p.reviewStatus === 'Pending' && p.id !== id)
+              ?? freshDb.find((p: any) => p.reviewStatus === 'Pending' && p.id !== id);
     setActivePatient(next ?? updated);
   };
 
-  const handleReset = () => {
-    const fresh = resetDatabase();
-    setPatients(fresh);
-    const pending = fresh.find(p => p.reviewStatus === 'Pending');
-    setActivePatient(pending ?? fresh[0]);
+  const handleReset = async () => {
+    await api.post('/patients/reset');
+    await mutate();
+    setActivePatient(null);
     showToast('Demo data reset.');
   };
 
-  const handleAddPatient = (e: React.FormEvent) => {
+  const handleAddPatient = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName || !newPhone) return;
     const doctors    = getDoctorList();
     const treatments = getTreatmentList();
-    const created = createPatient({
+    
+    const res = await api.post('/patients', {
       name: newName,
       phone: newPhone,
       doctorName: newDoctor || doctors[0],
@@ -96,8 +108,9 @@ export default function App() {
       vipTags: newType === 'VIP' || newType === 'Celebrity' ? [newType] : [],
       quickNotes: null,
     });
-    const db = getDatabase();
-    setPatients(db);
+    
+    const created = res.data;
+    await mutate();
     setActivePatient(created);
     setShowAddModal(false);
     setNewName(''); setNewPhone(''); setNewDoctor(''); setNewCategory('');
@@ -112,11 +125,8 @@ export default function App() {
   const doctors              = getDoctorList();
   const treatments           = getTreatmentList();
 
-  if (!role) return <Login onLogin={handleLogin} />;
-
   return (
     <div className="app-shell">
-
       {/* ── TOPBAR ─────────────────────────────────────────── */}
       <header className="topbar">
         <div className="topbar-brand">
@@ -153,11 +163,8 @@ export default function App() {
 
       {/* ── WORKSPACE ──────────────────────────────────────── */}
       <div className="workspace">
-
-        {/* ── CHECKOUT VIEW ──────────────────────────────── */}
         {view === 'checkout' && (
           <>
-            {/* Queue sidebar */}
             <aside className="queue-panel">
               <div className="panel-header">
                 <div className="panel-title">Today's Queue</div>
@@ -192,7 +199,6 @@ export default function App() {
                   );
                 })}
 
-                {/* Recently completed */}
                 {completedToday.length > 0 && (
                   <>
                     <div style={{ padding: '12px 10px 6px', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ink-3)' }}>
@@ -228,11 +234,9 @@ export default function App() {
               </div>
             </aside>
 
-            {/* Main checkout area */}
             <div className="checkout-area">
               {activePatient ? (
                 <>
-                  {/* Left: patient card + review form */}
                   <div className="checkout-left">
                     {toast && (
                       <div className="toast" style={{ marginBottom: 4 }}>
@@ -245,8 +249,6 @@ export default function App() {
                     <PatientCard patient={activePatient} />
                     <ReviewForm patient={activePatient} onSave={handleSave} />
                   </div>
-
-                  {/* Right: QR code */}
                   <div className="checkout-right">
                     <QRCodeGenerator
                       reviewUrl={reviewUrl}
@@ -268,7 +270,6 @@ export default function App() {
           </>
         )}
 
-        {/* ── DIRECTORY VIEW ─────────────────────────────── */}
         {view === 'directory' && (
           <SearchSystem
             patients={patients}
@@ -280,13 +281,11 @@ export default function App() {
           />
         )}
 
-        {/* ── DASHBOARD VIEW ─────────────────────────────── */}
         {view === 'dashboard' && (
-          <Dashboard onResetDb={handleReset} />
+          <Dashboard onResetDb={handleReset} patients={patients} />
         )}
       </div>
 
-      {/* ── ADD PATIENT MODAL ──────────────────────────────── */}
       {showAddModal && (
         <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
           <div className="modal-box" onClick={e => e.stopPropagation()}>
@@ -339,5 +338,15 @@ export default function App() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Login />} />
+      <Route path="/dashboard" element={<MainApp />} />
+      <Route path="*" element={<Navigate to="/" />} />
+    </Routes>
   );
 }

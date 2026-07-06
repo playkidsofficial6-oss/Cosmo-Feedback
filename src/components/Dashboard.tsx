@@ -6,15 +6,16 @@ import {
 
 interface Props {
   onResetDb: () => void;
+  patients: Patient[];
 }
 
-export function Dashboard({ onResetDb }: Props) {
+export function Dashboard({ onResetDb, patients }: Props) {
   const [tab, setTab] = useState<'overview' | 'sources' | 'doctors'>('overview');
 
-  const stats   = getTodayStats();
-  const doctors = getDoctorAnalytics();
-  const sources = getSourceAnalytics();
-  const mktg    = getMarketingAnalytics().slice(0, 7);
+  const stats   = getTodayStats(patients);
+  const doctors = getDoctorAnalytics(patients);
+  const sources = getSourceAnalytics(patients);
+  const mktg    = getMarketingAnalytics(patients).slice(0, 7);
 
   const maxMktg = Math.max(...mktg.map(m => m.count), 1);
 
