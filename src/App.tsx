@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
 import useSWR from 'swr';
 import { api, fetcher } from './services/api';
 import type { Patient } from './services/db';
-import { getDoctorList, getTreatmentList } from './services/db';
+
 import { Login } from './components/Login';
 import { PatientCard } from './components/PatientCard';
 import { ReviewForm } from './components/ReviewForm';
 import { QRCodeGenerator } from './components/QRCodeGenerator';
 import { Dashboard } from './components/Dashboard';
 import { SearchSystem } from './components/SearchSystem';
+import { RegisterPatientModal } from './components/RegisterPatientModal';
+import { AppointmentModal } from './components/AppointmentModal';
+import { DoctorModal } from './components/DoctorModal';
 
 type View = 'checkout' | 'directory' | 'dashboard';
 
@@ -28,24 +31,15 @@ function MainApp() {
   );
 
   const { data: patients = [], mutate } = useSWR<Patient[]>('/patients', fetcher);
+  const { data: appointments = [] } = useSWR<any[]>('/appointments', fetcher);
+  const { data: allDoctors = [], mutate: mutateDoctors } = useSWR<any[]>('/doctors', fetcher);
 
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newFirstName, setNewFirstName] = useState('');
-  const [newLastName, setNewLastName] = useState('');
-  const [newPhone, setNewPhone] = useState('');
-  const [newEmail, setNewEmail] = useState('');
-  const [newGender, setNewGender] = useState('');
-  const [newAge, setNewAge] = useState('');
-  const [newStreetAddress1, setNewStreetAddress1] = useState('');
-  const [newStreetAddress2, setNewStreetAddress2] = useState('');
-  const [newCity, setNewCity] = useState('Nilambur');
-  const [newStateLoc, setNewStateLoc] = useState('');
-  const [newPostalCode, setNewPostalCode] = useState('');
-  const [newCountry, setNewCountry] = useState('India');
-  const [newType, setNewType] = useState<Patient['patientType']>('Regular');
-  const [newNote, setNewNote] = useState('');
-  const [newDoctor, setNewDoctor] = useState('');
-  const [newCategory, setNewCategory] = useState('');
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
+  const [preselectedPatientId, setPreselectedPatientId] = useState<string | null>(null);
+
+  const [showDoctorModal, setShowDoctorModal] = useState(false);
+  const [doctorToEdit, setDoctorToEdit] = useState<any>(null);
 
   const [toast, setToast] = useState<string | null>(null);
 
@@ -53,6 +47,13 @@ function MainApp() {
     setToast(msg);
     setTimeout(() => setToast(null), 3500);
   };
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todaysPatientIds = useMemo(() => new Set(
+    appointments
+      .filter(a => a.createdAt && a.createdAt.startsWith(todayStr))
+      .map(a => a.patient?.id || a.patient?._id || a.patient)
+  ), [appointments, todayStr]);
 
   useEffect(() => {
     if (!user) {
@@ -62,12 +63,18 @@ function MainApp() {
 
   useEffect(() => {
     if (!activePatient && patients.length > 0) {
-      const todayStr = new Date().toISOString().split('T')[0];
-      const first = patients.find(p => p.visitDate === todayStr && p.reviewStatus === 'Pending')
+      const first = patients.find(p => todaysPatientIds.has(p.id) && p.reviewStatus === 'Pending')
         ?? patients.find(p => p.reviewStatus === 'Pending');
       if (first) setActivePatient(first);
     }
-  }, [patients, activePatient]);
+  }, [patients, appointments, activePatient, todaysPatientIds]);
+
+  const activeAppointment = useMemo(() => {
+    if (!activePatient) return null;
+    return appointments
+      .filter(a => (a.patient?.id || a.patient?._id || a.patient) === activePatient.id)
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())[0];
+  }, [activePatient, appointments]);
 
   if (!user) return null;
 
@@ -83,82 +90,50 @@ function MainApp() {
     showToast(`Check-out saved — ${updated.name}`);
 
     // Attempt to set next patient
-    const todayStr = new Date().toISOString().split('T')[0];
     const freshDb = await fetcher('/patients');
-    const next = freshDb.find((p: any) => p.visitDate === todayStr && p.reviewStatus === 'Pending' && p.id !== id)
+    const next = freshDb.find((p: any) => todaysPatientIds.has(p.id) && p.reviewStatus === 'Pending' && p.id !== id)
       ?? freshDb.find((p: any) => p.reviewStatus === 'Pending' && p.id !== id);
     setActivePatient(next ?? updated);
   };
 
-  const handleReset = async () => {
-    await api.post('/patients/reset');
-    await mutate();
-    setActivePatient(null);
-    showToast('Demo data reset.');
+  const handleAddDoctor = () => {
+    setDoctorToEdit(null);
+    setShowDoctorModal(true);
   };
 
-  const handleAddPatient = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newFirstName || !newLastName || !newPhone) return;
-    const fullName = `${newFirstName} ${newLastName}`;
-    const doctors = getDoctorList();
-    const treatments = getTreatmentList();
-
-    const res = await api.post('/patients', {
-      name: fullName,
-      firstName: newFirstName,
-      lastName: newLastName,
-      phone: newPhone,
-      email: newEmail,
-      gender: newGender,
-      age: newAge,
-      streetAddress1: newStreetAddress1,
-      streetAddress2: newStreetAddress2,
-      city: newCity,
-      state: newStateLoc,
-      postalCode: newPostalCode,
-      country: newCountry,
-      note: newNote,
-      doctorName: newDoctor || doctors[0],
-      treatmentCategory: newCategory || treatments[0],
-      patientType: newType,
-      photoUrl: null,
-      reviewStatus: 'Pending',
-      reviewStars: null,
-      reviewNotes: null,
-      marketingSource: null,
-      treatmentInterest: [newCategory || treatments[0]],
-      purchaseStatus: 'Consultation Only',
-      vipTags: newType === 'VIP' || newType === 'Celebrity' ? [newType] : [],
-      quickNotes: newNote || null,
-    });
-
-    const created = res.data;
-    await mutate();
-    setActivePatient(created);
-    setShowAddModal(false);
-    setNewFirstName(''); setNewLastName(''); setNewPhone('');
-    setNewEmail(''); setNewGender(''); setNewAge('');
-    setNewStreetAddress1(''); setNewStreetAddress2('');
-    setNewCity('Nilambur'); setNewStateLoc(''); setNewPostalCode('');
-    setNewCountry('India'); setNewNote('');
-    setNewType('Regular'); setNewDoctor(''); setNewCategory('');
-    setView('checkout');
-    showToast(`${created.name} added to queue.`);
+  const handleEditDoctor = (doc: any) => {
+    setDoctorToEdit(doc);
+    setShowDoctorModal(true);
   };
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const pendingQueue = patients.filter(p => p.visitDate === todayStr && p.reviewStatus === 'Pending');
-  const completedToday = patients.filter(p => p.visitDate === todayStr && p.reviewStatus !== 'Pending');
-  const doctors = getDoctorList();
-  const treatments = getTreatmentList();
+  const handleSaveDoctor = async (data: any) => {
+    if (doctorToEdit) {
+      await api.put(`/doctors/${doctorToEdit._id}`, data);
+      showToast(`Doctor updated to: ${data.name}`);
+    } else {
+      await api.post('/doctors', data);
+      showToast(`Doctor added: ${data.name}`);
+    }
+    await mutateDoctors();
+    setShowDoctorModal(false);
+  };
+
+  const handleDeleteDoctor = async (docId: string) => {
+    if (!window.confirm("Are you sure you want to remove this doctor?")) return;
+    await api.put(`/doctors/${docId}`, { isDeleted: true });
+    await mutateDoctors();
+    showToast(`Doctor removed.`);
+  };
+
+  const pendingQueue = patients.filter(p => todaysPatientIds.has(p.id) && p.reviewStatus === 'Pending');
+  const completedToday = patients.filter(p => todaysPatientIds.has(p.id) && p.reviewStatus !== 'Pending');
 
   return (
     <div className="app-shell">
       {/* ── TOPBAR ─────────────────────────────────────────── */}
       <header className="topbar">
         <div className="topbar-brand">
-          <div className="topbar-logo">C</div>
+          <img src="/logo.svg" alt="Cosmo Homes" className="topbar-logo-img" />
           <span className="topbar-name">Cosmo Homes</span>
         </div>
 
@@ -208,6 +183,10 @@ function MainApp() {
                 {pendingQueue.map(p => {
                   const isVip = p.patientType === 'VIP' || p.patientType === 'Celebrity';
                   const initials = p.name.split(' ').map(n => n[0]).join('').slice(0, 2);
+                  const appts = appointments.filter(a => a.patient && (a.patient.id === p.id || a.patient._id === p.id || a.patient === p.id));
+                  const latestAppt = appts.sort((a,b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())[0];
+                  const doctorName = latestAppt?.doctor?.name || '';
+                  
                   return (
                     <div
                       key={p.id}
@@ -220,7 +199,7 @@ function MainApp() {
                       </div>
                       <div className="q-info">
                         <div className="q-name">{p.name}</div>
-                        <div className="q-sub">{p.doctorName}</div>
+                        <div className="q-sub">{doctorName}</div>
                       </div>
                       {isVip && <span className="vip-dot" />}
                     </div>
@@ -255,9 +234,12 @@ function MainApp() {
                 )}
               </div>
 
-              <div className="panel-footer">
-                <button id="btn-add-patient" className="btn-add" onClick={() => setShowAddModal(true)}>
-                  + Register Walk-In
+              <div className="panel-footer" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <button id="btn-make-appointment" className="btn-add" style={{ background: 'var(--ink-1)' }} onClick={() => setShowAppointmentModal(true)}>
+                  Make Appointment
+                </button>
+                <button id="btn-add-patient" className="btn-add" onClick={() => setShowRegisterModal(true)}>
+                  + Register Patient
                 </button>
               </div>
             </aside>
@@ -274,8 +256,8 @@ function MainApp() {
                         {toast}
                       </div>
                     )}
-                    <PatientCard patient={activePatient} />
-                    <ReviewForm patient={activePatient} onSave={handleSave} />
+                    <PatientCard key={`card-${activePatient.id}`} patient={activePatient} appointment={activeAppointment} />
+                    <ReviewForm key={`form-${activePatient.id}`} patient={activePatient} onSave={handleSave} />
                   </div>
                   <div className="checkout-right">
                     <QRCodeGenerator
@@ -301,6 +283,7 @@ function MainApp() {
         {view === 'directory' && (
           <SearchSystem
             patients={patients}
+            appointments={appointments}
             activePatientId={activePatient?.id}
             onSelectPatient={(p) => {
               setActivePatient(p);
@@ -310,111 +293,47 @@ function MainApp() {
         )}
 
         {view === 'dashboard' && (
-          <Dashboard onResetDb={handleReset} patients={patients} />
+          <Dashboard 
+            patients={patients} 
+            appointments={appointments}
+            allDoctors={allDoctors}
+            onAddDoctor={handleAddDoctor}
+            onEditDoctor={handleEditDoctor}
+            onDeleteDoctor={handleDeleteDoctor}
+          />
         )}
       </div>
 
-      {showAddModal && (
-        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="modal-box" style={{ maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto', width: "100%" }} onClick={e => e.stopPropagation()}>
-            <div className="modal-title">Register Walk-In</div>
-            <div className="modal-sub">Add a patient to today's check-out queue</div>
+      {showRegisterModal && (
+        <RegisterPatientModal 
+          onClose={() => setShowRegisterModal(false)} 
+          onSuccess={(patientId, patientName) => {
+            mutate();
+            setPreselectedPatientId(patientId);
+            setShowRegisterModal(false);
+            setShowAppointmentModal(true);
+            showToast(`${patientName} registered. Ready to schedule appointment.`);
+          }} 
+        />
+      )}
 
-            <form onSubmit={handleAddPatient} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+      {showAppointmentModal && (
+        <AppointmentModal
+          patients={patients}
+          allDoctors={allDoctors}
+          onClose={() => { setShowAppointmentModal(false); setPreselectedPatientId(null); }}
+          onOpenAddPatient={() => { setShowAppointmentModal(false); setShowRegisterModal(true); }}
+          preselectedPatientId={preselectedPatientId}
+          onAppointmentCreated={() => { mutate(); setShowAppointmentModal(false); setPreselectedPatientId(null); }}
+        />
+      )}
 
-              <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '16px' }}>
-                <div style={{ flex: 1 }}>
-                  <label className="form-label">First Name *</label>
-                  <input className="form-control" placeholder="e.g. Priya" value={newFirstName} onChange={e => setNewFirstName(e.target.value)} required />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label className="form-label">Last Name *</label>
-                  <input className="form-control" placeholder="e.g. Kapoor" value={newLastName} onChange={e => setNewLastName(e.target.value)} required />
-                </div>
-              </div>
-
-              <div>
-                <label className="form-label">Phone Number *</label>
-                <input className="form-control" placeholder="+91 98xx xxxxxx" value={newPhone} onChange={e => setNewPhone(e.target.value)} required />
-              </div>
-
-              <div>
-                <label className="form-label">Email</label>
-                <input type="email" className="form-control" placeholder="Optional" value={newEmail} onChange={e => setNewEmail(e.target.value)} />
-              </div>
-
-              <div>
-                <label className="form-label">Gender</label>
-                <select className="form-control" value={newGender} onChange={e => setNewGender(e.target.value)}>
-                  <option value="">Select</option>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="form-label">Age</label>
-                <input type="number" className="form-control" placeholder="Optional" value={newAge} onChange={e => setNewAge(e.target.value)} />
-              </div>
-
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label className="form-label">Street Address (Line 1) *</label>
-                <input className="form-control" value={newStreetAddress1} onChange={e => setNewStreetAddress1(e.target.value)} required />
-              </div>
-
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label className="form-label">Street Address (Line 2) (Optional)</label>
-                <input className="form-control" value={newStreetAddress2} onChange={e => setNewStreetAddress2(e.target.value)} />
-              </div>
-
-              <div>
-                <label className="form-label">City / Town *</label>
-                <input className="form-control" value={newCity} onChange={e => setNewCity(e.target.value)} required />
-              </div>
-
-              <div>
-                <label className="form-label">State / Province / Region *</label>
-                <input className="form-control" value={newStateLoc} onChange={e => setNewStateLoc(e.target.value)} required />
-              </div>
-
-              <div>
-                <label className="form-label">Postal / ZIP Code *</label>
-                <input className="form-control" value={newPostalCode} onChange={e => setNewPostalCode(e.target.value)} required />
-              </div>
-
-              <div>
-                <label className="form-label">Country *</label>
-                <input className="form-control" value={newCountry} onChange={e => setNewCountry(e.target.value)} required />
-              </div>
-
-              <div>
-                <label className="form-label">Patient Type</label>
-                <select className="form-control" value={newType} onChange={e => setNewType(e.target.value as any)}>
-                  <option value="Regular">Regular</option>
-                  <option value="VIP">VIP</option>
-                  <option value="Celebrity">Celebrity</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="form-label">Note</label>
-                <input className="form-control" placeholder="Optional" value={newNote} onChange={e => setNewNote(e.target.value)} />
-              </div>
-
-
-
-              <div className="modal-actions" style={{ gridColumn: '1 / -1', marginTop: '16px' }}>
-                <button type="button" className="btn-ghost" onClick={() => setShowAddModal(false)}>
-                  Cancel
-                </button>
-                <button id="modal-submit" type="submit" className="btn-save" style={{ flex: 1 }}>
-                  Add to Queue
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {showDoctorModal && (
+        <DoctorModal
+          initialData={doctorToEdit}
+          onClose={() => setShowDoctorModal(false)}
+          onSave={handleSaveDoctor}
+        />
       )}
     </div>
   );

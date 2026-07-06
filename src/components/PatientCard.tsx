@@ -1,8 +1,9 @@
-import React from 'react';
+
 import type { Patient } from '../services/db';
 
 interface Props {
   patient: Patient;
+  appointment?: any;
 }
 
 const TYPE_BADGE: Record<string, string> = {
@@ -15,7 +16,7 @@ const TYPE_BADGE: Record<string, string> = {
   Corporate:          'badge-regular',
 };
 
-export function PatientCard({ patient }: Props) {
+export function PatientCard({ patient, appointment }: Props) {
   const initials = patient.name.split(' ').map(n => n[0]).join('').slice(0, 2);
   const isVip    = patient.patientType === 'VIP' || patient.patientType === 'Celebrity';
 
@@ -41,16 +42,16 @@ export function PatientCard({ patient }: Props) {
       <div className="patient-grid">
         <div className="patient-field">
           <div className="field-label">Doctor</div>
-          <div className="field-value">{patient.doctorName}</div>
+          <div className="field-value">{appointment?.doctorName || '-'}</div>
         </div>
         <div className="patient-field">
           <div className="field-label">Treatment</div>
-          <div className="field-value">{patient.treatmentCategory}</div>
+          <div className="field-value">{appointment?.treatmentCategory || '-'}</div>
         </div>
         <div className="patient-field">
-          <div className="field-label">Date</div>
+          <div className="field-label">Date & Time</div>
           <div className="field-value">
-            {new Date(patient.visitDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+            {appointment?.createdAt ? new Date(appointment.createdAt).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}
           </div>
         </div>
       </div>

@@ -1,19 +1,23 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { Patient } from '../services/db';
 import {
   getTodayStats, getDoctorAnalytics, getSourceAnalytics, getMarketingAnalytics
 } from '../services/db';
 
 interface Props {
-  onResetDb: () => void;
   patients: Patient[];
+  appointments?: any[];
+  allDoctors?: any[];
+  onAddDoctor?: () => void;
+  onEditDoctor?: (doc: any) => void;
+  onDeleteDoctor?: (docId: string) => void;
 }
 
-export function Dashboard({ onResetDb, patients }: Props) {
+export function Dashboard({ patients, appointments = [], allDoctors = [], onAddDoctor, onEditDoctor, onDeleteDoctor }: Props) {
   const [tab, setTab] = useState<'overview' | 'sources' | 'doctors'>('overview');
 
-  const stats   = getTodayStats(patients);
-  const doctors = getDoctorAnalytics(patients);
+  const stats   = getTodayStats(patients, appointments);
+  const doctors = getDoctorAnalytics(patients, appointments);
   const sources = getSourceAnalytics(patients);
   const mktg    = getMarketingAnalytics(patients).slice(0, 7);
 
@@ -30,9 +34,6 @@ export function Dashboard({ onResetDb, patients }: Props) {
           </div>
         </div>
         <div className="dash-actions">
-          <button id="btn-reset-db" className="btn-outline danger" onClick={onResetDb}>
-            ↺ Reset Demo Data
-          </button>
         </div>
       </div>
 
@@ -184,33 +185,50 @@ export function Dashboard({ onResetDb, patients }: Props) {
       {/* Tab: Doctors */}
       {tab === 'doctors' && (
         <div className="dash-card">
-          <div className="dash-card-head">Doctor Performance</div>
+          <div className="dash-card-head" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Doctor Performance</span>
+            <button className="btn-add" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={onAddDoctor}>
+              + Add Doctor
+            </button>
+          </div>
           <div className="dash-card-body" style={{ padding: 0 }}>
             <table className="clean-table">
               <thead>
                 <tr>
                   <th>Doctor</th>
+                  <th>Department</th>
+                  <th>Specialization</th>
                   <th>Patients</th>
                   <th>Reviews</th>
                   <th>Avg. Rating</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {doctors.map(d => (
-                  <tr key={d.doctorName}>
-                    <td className="table-name">{d.doctorName}</td>
-                    <td>{d.patients}</td>
-                    <td>{d.reviews}</td>
-                    <td>
-                      {d.averageRating > 0 ? (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <span style={{ color: 'var(--gold)', fontSize: 13 }}>★</span>
-                          {d.averageRating}
-                        </span>
-                      ) : '—'}
-                    </td>
-                  </tr>
-                ))}
+                {allDoctors.map(doc => {
+                  const analytics = doctors.find(d => d.doctorName === doc.name) || { patients: 0, reviews: 0, averageRating: 0 };
+                  return (
+                    <tr key={doc._id}>
+                      <td className="table-name">{doc.name}</td>
+                      <td>{doc.department || '—'}</td>
+                      <td>{doc.specialization || '—'}</td>
+                      <td>{analytics.patients}</td>
+                      <td>{analytics.reviews}</td>
+                      <td>
+                        {analytics.averageRating > 0 ? (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ color: 'var(--gold)', fontSize: 13 }}>★</span>
+                            {analytics.averageRating}
+                          </span>
+                        ) : '—'}
+                      </td>
+                      <td>
+                        <button className="btn-ghost" style={{ padding: '4px 8px', fontSize: '11px', marginRight: '4px' }} onClick={() => onEditDoctor && onEditDoctor(doc)}>Edit</button>
+                        <button className="btn-ghost" style={{ padding: '4px 8px', fontSize: '11px', color: 'var(--red)' }} onClick={() => onDeleteDoctor && onDeleteDoctor(doc._id)}>Delete</button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

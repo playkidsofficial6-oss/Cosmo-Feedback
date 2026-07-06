@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
-import { api } from '../services/api';
+import { api, setAccessToken } from '../services/api';
 
 const ROLES = [
   { key: 'reception' as const, label: 'Reception', name: 'Receptionist' },
@@ -26,6 +26,7 @@ export function Login() {
       });
       
       if (response.data && response.data.user) {
+        setAccessToken(response.data.accessToken);
         Cookies.set('user', JSON.stringify({ ...response.data.user, name: role.name }), { expires: 1 });
         navigate('/dashboard');
       }
@@ -38,7 +39,7 @@ export function Login() {
   return (
     <div className="login-shell">
       <div className="login-card fade-in">
-        <div className="login-logo">C</div>
+        <img src="/logo.svg" alt="Cosmo Homes" className="login-logo-img" />
         <h1 className="login-title">Cosmo Homes</h1>
         <p className="login-sub">Review Concierge</p>
 
