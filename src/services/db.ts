@@ -1,7 +1,19 @@
 export interface Patient {
   id: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   phone: string;
+  email?: string;
+  gender?: string;
+  age?: string;
+  streetAddress1?: string;
+  streetAddress2?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+  note?: string;
   doctorName: string;
   treatmentCategory: string;
   visitDate: string; // YYYY-MM-DD

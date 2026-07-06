@@ -5,12 +5,12 @@ import useSWR from 'swr';
 import { api, fetcher } from './services/api';
 import type { Patient } from './services/db';
 import { getDoctorList, getTreatmentList } from './services/db';
-import { Login }            from './components/Login';
-import { PatientCard }      from './components/PatientCard';
-import { ReviewForm }       from './components/ReviewForm';
-import { QRCodeGenerator }  from './components/QRCodeGenerator';
-import { Dashboard }        from './components/Dashboard';
-import { SearchSystem }     from './components/SearchSystem';
+import { Login } from './components/Login';
+import { PatientCard } from './components/PatientCard';
+import { ReviewForm } from './components/ReviewForm';
+import { QRCodeGenerator } from './components/QRCodeGenerator';
+import { Dashboard } from './components/Dashboard';
+import { SearchSystem } from './components/SearchSystem';
 
 type View = 'checkout' | 'directory' | 'dashboard';
 
@@ -30,11 +30,22 @@ function MainApp() {
   const { data: patients = [], mutate } = useSWR<Patient[]>('/patients', fetcher);
 
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newName,      setNewName]      = useState('');
-  const [newPhone,     setNewPhone]     = useState('');
-  const [newType,      setNewType]      = useState<Patient['patientType']>('First Time Visitor');
-  const [newDoctor,    setNewDoctor]    = useState('');
-  const [newCategory,  setNewCategory]  = useState('');
+  const [newFirstName, setNewFirstName] = useState('');
+  const [newLastName, setNewLastName] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newGender, setNewGender] = useState('');
+  const [newAge, setNewAge] = useState('');
+  const [newStreetAddress1, setNewStreetAddress1] = useState('');
+  const [newStreetAddress2, setNewStreetAddress2] = useState('');
+  const [newCity, setNewCity] = useState('Nilambur');
+  const [newStateLoc, setNewStateLoc] = useState('');
+  const [newPostalCode, setNewPostalCode] = useState('');
+  const [newCountry, setNewCountry] = useState('India');
+  const [newType, setNewType] = useState<Patient['patientType']>('Regular');
+  const [newNote, setNewNote] = useState('');
+  const [newDoctor, setNewDoctor] = useState('');
+  const [newCategory, setNewCategory] = useState('');
 
   const [toast, setToast] = useState<string | null>(null);
 
@@ -53,7 +64,7 @@ function MainApp() {
     if (!activePatient && patients.length > 0) {
       const todayStr = new Date().toISOString().split('T')[0];
       const first = patients.find(p => p.visitDate === todayStr && p.reviewStatus === 'Pending')
-                  ?? patients.find(p => p.reviewStatus === 'Pending');
+        ?? patients.find(p => p.reviewStatus === 'Pending');
       if (first) setActivePatient(first);
     }
   }, [patients, activePatient]);
@@ -70,12 +81,12 @@ function MainApp() {
     const updated = res.data;
     await mutate();
     showToast(`Check-out saved — ${updated.name}`);
-    
+
     // Attempt to set next patient
     const todayStr = new Date().toISOString().split('T')[0];
     const freshDb = await fetcher('/patients');
     const next = freshDb.find((p: any) => p.visitDate === todayStr && p.reviewStatus === 'Pending' && p.id !== id)
-              ?? freshDb.find((p: any) => p.reviewStatus === 'Pending' && p.id !== id);
+      ?? freshDb.find((p: any) => p.reviewStatus === 'Pending' && p.id !== id);
     setActivePatient(next ?? updated);
   };
 
@@ -88,13 +99,26 @@ function MainApp() {
 
   const handleAddPatient = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newName || !newPhone) return;
-    const doctors    = getDoctorList();
+    if (!newFirstName || !newLastName || !newPhone) return;
+    const fullName = `${newFirstName} ${newLastName}`;
+    const doctors = getDoctorList();
     const treatments = getTreatmentList();
-    
+
     const res = await api.post('/patients', {
-      name: newName,
+      name: fullName,
+      firstName: newFirstName,
+      lastName: newLastName,
       phone: newPhone,
+      email: newEmail,
+      gender: newGender,
+      age: newAge,
+      streetAddress1: newStreetAddress1,
+      streetAddress2: newStreetAddress2,
+      city: newCity,
+      state: newStateLoc,
+      postalCode: newPostalCode,
+      country: newCountry,
+      note: newNote,
       doctorName: newDoctor || doctors[0],
       treatmentCategory: newCategory || treatments[0],
       patientType: newType,
@@ -106,24 +130,28 @@ function MainApp() {
       treatmentInterest: [newCategory || treatments[0]],
       purchaseStatus: 'Consultation Only',
       vipTags: newType === 'VIP' || newType === 'Celebrity' ? [newType] : [],
-      quickNotes: null,
+      quickNotes: newNote || null,
     });
-    
+
     const created = res.data;
     await mutate();
     setActivePatient(created);
     setShowAddModal(false);
-    setNewName(''); setNewPhone(''); setNewDoctor(''); setNewCategory('');
-    setNewType('First Time Visitor');
+    setNewFirstName(''); setNewLastName(''); setNewPhone('');
+    setNewEmail(''); setNewGender(''); setNewAge('');
+    setNewStreetAddress1(''); setNewStreetAddress2('');
+    setNewCity('Nilambur'); setNewStateLoc(''); setNewPostalCode('');
+    setNewCountry('India'); setNewNote('');
+    setNewType('Regular'); setNewDoctor(''); setNewCategory('');
     setView('checkout');
     showToast(`${created.name} added to queue.`);
   };
 
-  const todayStr             = new Date().toISOString().split('T')[0];
-  const pendingQueue         = patients.filter(p => p.visitDate === todayStr && p.reviewStatus === 'Pending');
-  const completedToday       = patients.filter(p => p.visitDate === todayStr && p.reviewStatus !== 'Pending');
-  const doctors              = getDoctorList();
-  const treatments           = getTreatmentList();
+  const todayStr = new Date().toISOString().split('T')[0];
+  const pendingQueue = patients.filter(p => p.visitDate === todayStr && p.reviewStatus === 'Pending');
+  const completedToday = patients.filter(p => p.visitDate === todayStr && p.reviewStatus !== 'Pending');
+  const doctors = getDoctorList();
+  const treatments = getTreatmentList();
 
   return (
     <div className="app-shell">
@@ -135,10 +163,10 @@ function MainApp() {
         </div>
 
         <nav className="topbar-nav">
-          <button id="nav-checkout"  className={`nav-pill ${view === 'checkout'   ? 'active' : ''}`} onClick={() => setView('checkout')}>
+          <button id="nav-checkout" className={`nav-pill ${view === 'checkout' ? 'active' : ''}`} onClick={() => setView('checkout')}>
             Check-out
           </button>
-          <button id="nav-directory" className={`nav-pill ${view === 'directory'  ? 'active' : ''}`} onClick={() => setView('directory')}>
+          <button id="nav-directory" className={`nav-pill ${view === 'directory' ? 'active' : ''}`} onClick={() => setView('directory')}>
             Directory
           </button>
           {(role === 'manager' || role === 'admin') && (
@@ -153,9 +181,9 @@ function MainApp() {
           <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{staffName}</span>
           <button id="btn-logout" className="btn-icon" title="Log Out" onClick={handleLogout}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-              <polyline points="16 17 21 12 16 7"/>
-              <line x1="21" y1="12" x2="9" y2="12"/>
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
             </svg>
           </button>
         </div>
@@ -213,7 +241,7 @@ function MainApp() {
                           onClick={() => setActivePatient(p)}
                           style={{ opacity: 0.55 }}
                         >
-                          <div className="q-avatar">{p.photoUrl ? <img src={p.photoUrl} alt={p.name}/> : initials}</div>
+                          <div className="q-avatar">{p.photoUrl ? <img src={p.photoUrl} alt={p.name} /> : initials}</div>
                           <div className="q-info">
                             <div className="q-name">{p.name}</div>
                             <div className="q-sub" style={{ color: p.reviewStatus === 'Yes' ? 'var(--green)' : 'var(--red)' }}>
@@ -241,7 +269,7 @@ function MainApp() {
                     {toast && (
                       <div className="toast" style={{ marginBottom: 4 }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4A7C59" strokeWidth="2.5">
-                          <polyline points="20 6 9 17 4 12"/>
+                          <polyline points="20 6 9 17 4 12" />
                         </svg>
                         {toast}
                       </div>
@@ -260,8 +288,8 @@ function MainApp() {
               ) : (
                 <div className="no-selection" style={{ flex: 1 }}>
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--border)" strokeWidth="1.2">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                    <polyline points="9 22 9 12 15 12 15 22"/>
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                    <polyline points="9 22 9 12 15 12 15 22" />
                   </svg>
                   <p>Select a patient from the queue to begin check-out</p>
                 </div>
@@ -288,44 +316,95 @@ function MainApp() {
 
       {showAddModal && (
         <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="modal-box" onClick={e => e.stopPropagation()}>
+          <div className="modal-box" style={{ maxWidth: '700px', maxHeight: '90vh', overflowY: 'auto', width: "100%" }} onClick={e => e.stopPropagation()}>
             <div className="modal-title">Register Walk-In</div>
             <div className="modal-sub">Add a patient to today's check-out queue</div>
 
-            <form onSubmit={handleAddPatient}>
-              <label className="form-label">Full Name *</label>
-              <input id="modal-name" className="form-control" placeholder="e.g. Priya Kapoor" value={newName}
-                onChange={e => setNewName(e.target.value)} required />
+            <form onSubmit={handleAddPatient} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
 
-              <label className="form-label">Phone Number *</label>
-              <input id="modal-phone" className="form-control" placeholder="+91 98xx xxxxxx" value={newPhone}
-                onChange={e => setNewPhone(e.target.value)} required />
+              <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '16px' }}>
+                <div style={{ flex: 1 }}>
+                  <label className="form-label">First Name *</label>
+                  <input className="form-control" placeholder="e.g. Priya" value={newFirstName} onChange={e => setNewFirstName(e.target.value)} required />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="form-label">Last Name *</label>
+                  <input className="form-control" placeholder="e.g. Kapoor" value={newLastName} onChange={e => setNewLastName(e.target.value)} required />
+                </div>
+              </div>
 
-              <label className="form-label">Consulting Doctor</label>
-              <select id="modal-doctor" className="form-control" value={newDoctor}
-                onChange={e => setNewDoctor(e.target.value)}>
-                {doctors.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
+              <div>
+                <label className="form-label">Phone Number *</label>
+                <input className="form-control" placeholder="+91 98xx xxxxxx" value={newPhone} onChange={e => setNewPhone(e.target.value)} required />
+              </div>
 
-              <label className="form-label">Treatment Category</label>
-              <select id="modal-category" className="form-control" value={newCategory}
-                onChange={e => setNewCategory(e.target.value)}>
-                {treatments.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
+              <div>
+                <label className="form-label">Email</label>
+                <input type="email" className="form-control" placeholder="Optional" value={newEmail} onChange={e => setNewEmail(e.target.value)} />
+              </div>
 
-              <label className="form-label">Patient Type</label>
-              <select id="modal-type" className="form-control" value={newType}
-                onChange={e => setNewType(e.target.value as Patient['patientType'])}>
-                <option value="First Time Visitor">First Time Visitor</option>
-                <option value="Returning Patient">Returning Patient</option>
-                <option value="Regular">Regular</option>
-                <option value="VIP">VIP</option>
-                <option value="Celebrity">Celebrity</option>
-                <option value="Referral">Referral</option>
-                <option value="Corporate">Corporate</option>
-              </select>
+              <div>
+                <label className="form-label">Gender</label>
+                <select className="form-control" value={newGender} onChange={e => setNewGender(e.target.value)}>
+                  <option value="">Select</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
 
-              <div className="modal-actions">
+              <div>
+                <label className="form-label">Age</label>
+                <input type="number" className="form-control" placeholder="Optional" value={newAge} onChange={e => setNewAge(e.target.value)} />
+              </div>
+
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label className="form-label">Street Address (Line 1) *</label>
+                <input className="form-control" value={newStreetAddress1} onChange={e => setNewStreetAddress1(e.target.value)} required />
+              </div>
+
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label className="form-label">Street Address (Line 2) (Optional)</label>
+                <input className="form-control" value={newStreetAddress2} onChange={e => setNewStreetAddress2(e.target.value)} />
+              </div>
+
+              <div>
+                <label className="form-label">City / Town *</label>
+                <input className="form-control" value={newCity} onChange={e => setNewCity(e.target.value)} required />
+              </div>
+
+              <div>
+                <label className="form-label">State / Province / Region *</label>
+                <input className="form-control" value={newStateLoc} onChange={e => setNewStateLoc(e.target.value)} required />
+              </div>
+
+              <div>
+                <label className="form-label">Postal / ZIP Code *</label>
+                <input className="form-control" value={newPostalCode} onChange={e => setNewPostalCode(e.target.value)} required />
+              </div>
+
+              <div>
+                <label className="form-label">Country *</label>
+                <input className="form-control" value={newCountry} onChange={e => setNewCountry(e.target.value)} required />
+              </div>
+
+              <div>
+                <label className="form-label">Patient Type</label>
+                <select className="form-control" value={newType} onChange={e => setNewType(e.target.value as any)}>
+                  <option value="Regular">Regular</option>
+                  <option value="VIP">VIP</option>
+                  <option value="Celebrity">Celebrity</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="form-label">Note</label>
+                <input className="form-control" placeholder="Optional" value={newNote} onChange={e => setNewNote(e.target.value)} />
+              </div>
+
+
+
+              <div className="modal-actions" style={{ gridColumn: '1 / -1', marginTop: '16px' }}>
                 <button type="button" className="btn-ghost" onClick={() => setShowAddModal(false)}>
                   Cancel
                 </button>
