@@ -3,11 +3,7 @@ const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/logo.svg',
-  '/src/main.tsx',
-  '/src/App.tsx',
-  '/src/index.css',
-  '/src/App.css'
+  '/logo.svg'
 ];
 
 self.addEventListener('install', (event) => {
