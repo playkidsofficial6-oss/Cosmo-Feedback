@@ -7,17 +7,17 @@ import { api } from '../services/api';
 const registerPatientSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
-  phone: z.string().min(1, 'Phone number is required'),
-  email: z.string().email('Invalid email address').or(z.literal('')),
+  phone: z.string().optional(),
+  email: z.string().email('Invalid email address').or(z.literal('')).optional(),
   gender: z.string().optional(),
   age: z.string().optional(),
-  streetAddress1: z.string().min(1, 'Street address is required'),
+  streetAddress1: z.string().optional(),
   streetAddress2: z.string().optional(),
-  city: z.string().min(1, 'City is required'),
-  state: z.string().min(1, 'State is required'),
-  postalCode: z.string().min(1, 'Postal code is required'),
-  country: z.string().min(1, 'Country is required'),
-  patientType: z.string().min(1, 'Patient type is required'),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  postalCode: z.string().optional(),
+  country: z.string().optional(),
+  patientType: z.string().optional(),
   note: z.string().optional(),
 });
 
@@ -39,14 +39,19 @@ export const RegisterPatientModal: React.FC<RegisterPatientModalProps> = ({ onCl
   } = useForm<RegisterPatientFormData>({
     resolver: zodResolver(registerPatientSchema),
     defaultValues: {
-      city: 'Nilambur',
-      state: 'Kerala',
-      country: 'India',
-      patientType: 'Regular',
+      firstName: '',
+      lastName: '',
+      phone: '',
       email: '',
       gender: '',
       age: '',
+      streetAddress1: '',
       streetAddress2: '',
+      city: '',
+      state: '',
+      postalCode: '',
+      country: '',
+      patientType: 'Regular',
       note: '',
     },
   });
@@ -63,17 +68,17 @@ export const RegisterPatientModal: React.FC<RegisterPatientModalProps> = ({ onCl
         name: `${data.firstName} ${data.lastName}`,
         firstName: data.firstName,
         lastName: data.lastName,
-        phone: data.phone,
+        phone: data.phone || null,
         email: data.email || null,
         gender: data.gender || null,
         age: data.age || null,
-        streetAddress1: data.streetAddress1,
+        streetAddress1: data.streetAddress1 || null,
         streetAddress2: data.streetAddress2 || null,
-        city: data.city,
-        state: data.state,
-        postalCode: data.postalCode,
-        country: data.country,
-        patientType: data.patientType,
+        city: data.city || null,
+        state: data.state || null,
+        postalCode: data.postalCode || null,
+        country: data.country || null,
+        patientType: data.patientType || 'Regular',
         note: data.note || null,
         reviewStatus: 'Pending',
         purchaseStatus: 'No Purchase',
@@ -115,9 +120,8 @@ export const RegisterPatientModal: React.FC<RegisterPatientModalProps> = ({ onCl
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <div>
-              <label className="form-label">Phone Number *</label>
+              <label className="form-label">Phone Number</label>
               <input className="form-control" placeholder="+91..." {...register('phone')} />
-              {errors.phone && <span style={{ color: 'red', fontSize: '12px' }}>{errors.phone.message}</span>}
             </div>
             <div>
               <label className="form-label">Email</label>
@@ -143,9 +147,8 @@ export const RegisterPatientModal: React.FC<RegisterPatientModalProps> = ({ onCl
           </div>
 
           <div>
-            <label className="form-label">Street Address (Line 1) *</label>
+            <label className="form-label">Street Address (Line 1)</label>
             <input className="form-control" placeholder="123 Main St" {...register('streetAddress1')} />
-            {errors.streetAddress1 && <span style={{ color: 'red', fontSize: '12px' }}>{errors.streetAddress1.message}</span>}
           </div>
 
           <div>
@@ -155,36 +158,31 @@ export const RegisterPatientModal: React.FC<RegisterPatientModalProps> = ({ onCl
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <div>
-              <label className="form-label">City / Town *</label>
+              <label className="form-label">City / Town</label>
               <input className="form-control" {...register('city')} />
-              {errors.city && <span style={{ color: 'red', fontSize: '12px' }}>{errors.city.message}</span>}
             </div>
             <div>
-              <label className="form-label">State / Province / Region *</label>
+              <label className="form-label">State / Province / Region</label>
               <input className="form-control" placeholder="Kerala" {...register('state')} />
-              {errors.state && <span style={{ color: 'red', fontSize: '12px' }}>{errors.state.message}</span>}
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
             <div>
-              <label className="form-label">Postal / ZIP Code *</label>
+              <label className="form-label">Postal / ZIP Code</label>
               <input className="form-control" placeholder="679329" {...register('postalCode')} />
-              {errors.postalCode && <span style={{ color: 'red', fontSize: '12px' }}>{errors.postalCode.message}</span>}
             </div>
             <div>
-              <label className="form-label">Country *</label>
+              <label className="form-label">Country</label>
               <input className="form-control" {...register('country')} />
-              {errors.country && <span style={{ color: 'red', fontSize: '12px' }}>{errors.country.message}</span>}
             </div>
             <div>
-              <label className="form-label">Patient Type *</label>
+              <label className="form-label">Patient Type</label>
               <select className="form-control" {...register('patientType')}>
                 <option value="Regular">Regular</option>
                 <option value="VIP">VIP</option>
                 <option value="Celebrity">Celebrity</option>
               </select>
-              {errors.patientType && <span style={{ color: 'red', fontSize: '12px' }}>{errors.patientType.message}</span>}
             </div>
           </div>
 

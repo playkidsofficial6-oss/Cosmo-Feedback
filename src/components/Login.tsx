@@ -38,10 +38,23 @@ export function Login() {
 
   return (
     <div className="login-shell">
-      <div className="login-card fade-in">
-        <img src="/logo.svg" alt="Cosmo Homes" className="login-logo-img" />
-        <h1 className="login-title">Cosmo Homes</h1>
-        <p className="login-sub">Review Concierge</p>
+      <div className="login-container">
+        
+        {/* Left Informational Side */}
+        <div className="login-left fade-in">
+          <img src="/logo.svg" alt="Cosmo" className="login-logo-large" />
+          <h1 className="login-hero-title">Experience True<br/>Luxury & Care.</h1>
+          <p className="login-hero-desc">
+            Welcome to the Cosmo Home Skin Care Centre management suite. 
+            Sign in to securely access patient records, manage appointments, and elevate your clinic operations.
+          </p>
+        </div>
+
+        {/* Right Login Card Side */}
+        <div className="login-right fade-in" style={{ animationDelay: '0.1s' }}>
+          <div className="login-card">
+            <h2 className="login-title">Welcome Back</h2>
+            <p className="login-sub">Select your account role</p>
 
         {/* Role Selector */}
         <div className="role-tabs">
@@ -74,6 +87,8 @@ export function Login() {
             Sign In
           </button>
         </form>
+          </div>
+        </div>
       </div>
     </div>
   );

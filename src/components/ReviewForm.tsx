@@ -241,7 +241,7 @@ export function ReviewForm({ patient, onSave }: Props) {
         />
 
         <button id="btn-save-checkout" className="btn-save" style={{ width: '100%', marginTop: 14 }} onClick={handleSave}>
-          Save Check-out
+          Complete
         </button>
       </div>
     </div>

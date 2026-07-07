@@ -32,7 +32,7 @@ function MainApp() {
   );
 
   const { data: patients = [], mutate } = useSWR<Patient[]>('/patients', fetcher);
-  const { data: appointments = [] } = useSWR<any[]>('/appointments', fetcher);
+  const { data: appointments = [], mutate: mutateAppointments } = useSWR<any[]>('/appointments', fetcher);
   const { data: allDoctors = [], mutate: mutateDoctors } = useSWR<any[]>('/doctors', fetcher);
 
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -134,8 +134,8 @@ function MainApp() {
       {/* ── TOPBAR ─────────────────────────────────────────── */}
       <header className="topbar">
         <div className="topbar-brand">
-          <img src="/logo.svg" alt="Cosmo Homes" className="topbar-logo-img" />
-          <span className="topbar-name">Cosmo Homes</span>
+          <img src="/logo.svg" alt="Cosmo Home Skin Care Centre" className="topbar-logo-img" />
+          <span className="topbar-name">Cosmo Home Skin Care Centre</span>
         </div>
 
         <nav className="topbar-nav">
@@ -157,7 +157,7 @@ function MainApp() {
 
         <div className="topbar-right">
           <span className="role-chip">{role}</span>
-          <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{staffName}</span>
+          {/* <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{staffName}</span> */}
           <button id="btn-logout" className="btn-icon" title="Log Out" onClick={handleLogout}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -188,9 +188,9 @@ function MainApp() {
                   const isVip = p.patientType === 'VIP' || p.patientType === 'Celebrity';
                   const initials = p.name.split(' ').map(n => n[0]).join('').slice(0, 2);
                   const appts = appointments.filter(a => a.patient && (a.patient.id === p.id || a.patient._id === p.id || a.patient === p.id));
-                  const latestAppt = appts.sort((a,b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())[0];
+                  const latestAppt = appts.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())[0];
                   const doctorName = latestAppt?.doctor?.name || '';
-                  
+
                   return (
                     <div
                       key={p.id}
@@ -239,7 +239,7 @@ function MainApp() {
               </div>
 
               <div className="panel-footer" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <button id="btn-make-appointment" className="btn-add" style={{ background: 'var(--ink-1)' }} onClick={() => setShowAppointmentModal(true)}>
+                <button id="btn-make-appointment" className="btn-add" onClick={() => setShowAppointmentModal(true)}>
                   Make Appointment
                 </button>
                 <button id="btn-add-patient" className="btn-add" onClick={() => setShowRegisterModal(true)}>
@@ -301,8 +301,8 @@ function MainApp() {
         )}
 
         {view === 'dashboard' && (
-          <Dashboard 
-            patients={patients} 
+          <Dashboard
+            patients={patients}
             appointments={appointments}
             allDoctors={allDoctors}
             onAddDoctor={handleAddDoctor}
@@ -313,15 +313,15 @@ function MainApp() {
       </div>
 
       {showRegisterModal && (
-        <RegisterPatientModal 
-          onClose={() => setShowRegisterModal(false)} 
+        <RegisterPatientModal
+          onClose={() => setShowRegisterModal(false)}
           onSuccess={(patientId, patientName) => {
             mutate();
             setPreselectedPatientId(patientId);
             setShowRegisterModal(false);
             setShowAppointmentModal(true);
             showToast(`${patientName} registered. Ready to schedule appointment.`);
-          }} 
+          }}
         />
       )}
 
@@ -332,7 +332,7 @@ function MainApp() {
           onClose={() => { setShowAppointmentModal(false); setPreselectedPatientId(null); }}
           onOpenAddPatient={() => { setShowAppointmentModal(false); setShowRegisterModal(true); }}
           preselectedPatientId={preselectedPatientId}
-          onAppointmentCreated={() => { mutate(); setShowAppointmentModal(false); setPreselectedPatientId(null); }}
+          onAppointmentCreated={() => { mutate(); mutateAppointments(); setShowAppointmentModal(false); setPreselectedPatientId(null); }}
         />
       )}
 
