@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = `http://${window.location.hostname}:3000`;
+const API_URL = `http://72.60.206.197:4000`;
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -26,7 +26,7 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    
+
     // Ignore refresh endpoint 401s to prevent infinite loop
     if (originalRequest.url === '/auth/refresh') {
       return Promise.reject(error);
