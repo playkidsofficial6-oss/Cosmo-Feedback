@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = `http://72.60.206.197:4000`;
+const API_URL = `https://api.cosmo.chameleonitservices.com`;
 
 export const api = axios.create({
   baseURL: API_URL,
