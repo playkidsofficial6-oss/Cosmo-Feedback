@@ -23,12 +23,12 @@ function MainApp() {
   const userCookie = Cookies.get('user');
   const user = userCookie ? JSON.parse(userCookie) : null;
   const role = user?.role;
-  const staffName = user?.name;
+
 
   const [view, setView] = useState<View>(role === 'reception' ? 'checkout' : 'dashboard');
   const [activePatient, setActivePatient] = useState<Patient | null>(null);
-  const [reviewUrl, setReviewUrl] = useState(
-    'https://search.google.com/local/writereview?placeid=ChIJiQ139bN1RDkR8eKj2_tD_r0'
+  const [reviewUrl] = useState(
+    'https://g.page/r/Cb41V9bO1-5gEBM/review'
   );
 
   const { data: patients = [], mutate } = useSWR<Patient[]>('/patients', fetcher);
@@ -266,8 +266,6 @@ function MainApp() {
                   <div className="checkout-right">
                     <QRCodeGenerator
                       reviewUrl={reviewUrl}
-                      onUrlChange={setReviewUrl}
-                      patientName={activePatient.name}
                     />
                   </div>
                 </>

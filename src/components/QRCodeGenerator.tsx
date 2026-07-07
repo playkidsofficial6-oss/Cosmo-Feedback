@@ -1,25 +1,18 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
 interface Props {
   reviewUrl: string;
-  onUrlChange: (url: string) => void;
-  patientName: string;
 }
 
 function SingleQRPanel({
   type,
-  defaultUrl,
-  patientName,
-  onUrlChange
+  defaultUrl
 }: {
   type: 'google' | 'instagram',
-  defaultUrl: string,
-  patientName: string,
-  onUrlChange?: (url: string) => void
+  defaultUrl: string
 }) {
   const [fullscreen, setFullscreen] = useState(false);
   const [activeUrl, setActiveUrl] = useState(defaultUrl);
-  const [copied, setCopied] = useState(false);
 
   // Sync with props if they change (mainly for google review url which might be updated from outside)
   useEffect(() => {
@@ -29,16 +22,6 @@ function SingleQRPanel({
   }, [defaultUrl, type]);
 
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(activeUrl)}&bgcolor=ffffff&color=111111&margin=0`;
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(activeUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* ignore */
-    }
-  };
 
   return (
     <>
@@ -89,19 +72,16 @@ function SingleQRPanel({
   );
 }
 
-export function QRCodeGenerator({ reviewUrl, onUrlChange, patientName }: Props) {
+export function QRCodeGenerator({ reviewUrl }: Props) {
   return (
     <div className="qr-container">
       <SingleQRPanel
         type="google"
         defaultUrl={reviewUrl}
-        patientName={patientName}
-        onUrlChange={onUrlChange}
       />
       <SingleQRPanel
         type="instagram"
         defaultUrl="https://www.instagram.com/cosmohomeskincare"
-        patientName={patientName}
       />
     </div>
   );
