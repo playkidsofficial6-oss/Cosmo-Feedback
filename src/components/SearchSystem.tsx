@@ -125,7 +125,7 @@ export function SearchSystem({ patients, appointments = [], onSelectPatient, act
                 {preview.photoUrl ? <img src={preview.photoUrl} alt={preview.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials(preview.name)}
               </div>
               <div>
-                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, color: 'var(--ink)' }}>{preview.name}</div>
+                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 20, color: 'var(--ink)' }}>{preview.name}</div>
                 <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>{preview.phone}</div>
               </div>
             </div>

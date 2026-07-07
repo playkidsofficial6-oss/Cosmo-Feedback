@@ -61,7 +61,7 @@ export function AppointmentsView() {
   return (
     <div style={{ padding: '28px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: 24, color: 'var(--ink)' }}>Appointments</h2>
+        <h2 style={{ fontFamily: "'Inter', sans-serif", fontSize: 24, color: 'var(--ink)' }}>Appointments</h2>
         
         <div className="chips-wrap" style={{ margin: 0 }}>
           {['All', 'Today', '7 days', '30 days', 'Custom'].map(f => (
