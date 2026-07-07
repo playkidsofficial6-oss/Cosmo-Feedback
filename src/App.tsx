@@ -14,8 +14,9 @@ import { SearchSystem } from './components/SearchSystem';
 import { RegisterPatientModal } from './components/RegisterPatientModal';
 import { AppointmentModal } from './components/AppointmentModal';
 import { DoctorModal } from './components/DoctorModal';
+import { AppointmentsView } from './components/AppointmentsView';
 
-type View = 'checkout' | 'directory' | 'dashboard';
+type View = 'checkout' | 'directory' | 'appointments' | 'dashboard';
 
 function MainApp() {
   const navigate = useNavigate();
@@ -143,6 +144,9 @@ function MainApp() {
           </button>
           <button id="nav-directory" className={`nav-pill ${view === 'directory' ? 'active' : ''}`} onClick={() => setView('directory')}>
             Directory
+          </button>
+          <button id="nav-appointments" className={`nav-pill ${view === 'appointments' ? 'active' : ''}`} onClick={() => setView('appointments')}>
+            Appointments
           </button>
           {(role === 'manager' || role === 'admin') && (
             <button id="nav-dashboard" className={`nav-pill ${view === 'dashboard' ? 'active' : ''}`} onClick={() => setView('dashboard')}>
@@ -290,6 +294,10 @@ function MainApp() {
               setView('checkout');
             }}
           />
+        )}
+
+        {view === 'appointments' && (
+          <AppointmentsView />
         )}
 
         {view === 'dashboard' && (

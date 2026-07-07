@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+const API_URL = `http://${window.location.hostname}:3000`;
+
 export const api = axios.create({
-  baseURL: 'http://localhost:3000',
+  baseURL: API_URL,
   withCredentials: true,
 });
 
@@ -33,7 +35,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        const res = await axios.post('http://localhost:3000/auth/refresh', {}, { withCredentials: true });
+        const res = await axios.post(`${API_URL}/auth/refresh`, {}, { withCredentials: true });
         const newToken = res.data.accessToken;
         setAccessToken(newToken);
         originalRequest.headers['Authorization'] = `Bearer ${newToken}`;

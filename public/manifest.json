@@ -3,7 +3,7 @@
   "name": "Cosmo Homes Review Collection PWA",
   "icons": [
     {
-      "src": "/favicon.svg",
+      "src": "/logo.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
