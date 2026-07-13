@@ -28,7 +28,7 @@ function MainApp() {
   const [view, setView] = useState<View>(role === 'reception' ? 'checkout' : 'dashboard');
   const [activePatient, setActivePatient] = useState<Patient | null>(null);
   const [reviewUrl] = useState(
-    'https://search.google.com/local/writereview?placeid=ChIJiQ139bN1RDkR8eKj2_tD_r0'
+    'https://g.page/r/CRrsj4jmltT8EBM/review'
   );
 
   const { data: patients = [], mutate } = useSWR<Patient[]>('/patients', fetcher);
