@@ -64,7 +64,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
   useEffect(() => {
     if (selectedPatientId) {
       const p = patients.find(p => p.id === selectedPatientId);
-      if (p) setSearchQuery(`${p.name} (${p.pid || 'N/A'})`);
+      if (p) setSearchQuery(p.name);
     } else {
       setSearchQuery('');
     }
@@ -127,22 +127,19 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
             <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end' }}>
               <div style={{ flex: 1, position: 'relative' }}>
                 <label className="form-label">Patient *</label>
-                <input 
+                <input
                   className="form-control"
-                  placeholder="Search patient name or ID..."
+                  placeholder="Search patient name"
                   value={searchQuery}
                   onChange={e => {
                     setSearchQuery(e.target.value);
                     setIsDropdownOpen(true);
-                    if (selectedPatientId) {
-                      setValue('patientId', '');
-                    }
                   }}
                   onFocus={() => setIsDropdownOpen(true)}
                   onBlur={() => setIsDropdownOpen(false)}
                 />
                 <input type="hidden" {...register('patientId')} />
-                
+
                 {isDropdownOpen && (
                   <div style={{
                     position: 'absolute', top: '100%', left: 0, right: 0,
@@ -151,12 +148,12 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                   }}>
                     {filteredPatients.length > 0 ? (
                       filteredPatients.map(p => (
-                        <div 
+                        <div
                           key={p.id}
                           onMouseDown={(e) => {
-                            e.preventDefault(); // prevents input blur
+                            e.preventDefault();
                             setValue('patientId', p.id, { shouldValidate: true });
-                            setSearchQuery(`${p.name} (${p.pid || 'N/A'})`);
+                            setSearchQuery(p.name);
                             setIsDropdownOpen(false);
                           }}
                           style={{
@@ -165,7 +162,7 @@ export const AppointmentModal: React.FC<AppointmentModalProps> = ({
                           onMouseEnter={e => e.currentTarget.style.background = 'var(--surface)'}
                           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                         >
-                          {p.name} <span style={{color: 'var(--ink-3)', fontSize: '11px'}}>({p.pid || 'N/A'})</span>
+                          {p.name}
                         </div>
                       ))
                     ) : (

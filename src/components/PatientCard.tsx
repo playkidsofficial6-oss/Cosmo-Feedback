@@ -42,7 +42,7 @@ export function PatientCard({ patient, appointment }: Props) {
       <div className="patient-grid">
         <div className="patient-field">
           <div className="field-label">Doctor</div>
-          <div className="field-value">{appointment?.doctorName || '-'}</div>
+          <div className="field-value">{appointment?.doctor?.name || appointment?.doctorName || '-'}</div>
         </div>
         <div className="patient-field">
           <div className="field-label">Treatment</div>

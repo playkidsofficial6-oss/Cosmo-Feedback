@@ -140,7 +140,7 @@ function MainApp() {
 
         <nav className="topbar-nav">
           <button id="nav-checkout" className={`nav-pill ${view === 'checkout' ? 'active' : ''}`} onClick={() => setView('checkout')}>
-            Check-out
+            Dashboard
           </button>
           <button id="nav-directory" className={`nav-pill ${view === 'directory' ? 'active' : ''}`} onClick={() => setView('directory')}>
             Directory
