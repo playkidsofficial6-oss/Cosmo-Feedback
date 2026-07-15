@@ -131,6 +131,12 @@ function MainApp() {
 
   return (
     <div className="app-shell">
+      <div className="workspace-bg-blobs">
+        <div className="bg-blob blob-1"></div>
+        <div className="bg-blob blob-2"></div>
+        <div className="bg-blob blob-3"></div>
+      </div>
+
       {/* ── TOPBAR ─────────────────────────────────────────── */}
       <header className="topbar">
         <div className="topbar-brand">
@@ -212,7 +218,7 @@ function MainApp() {
 
                 {completedToday.length > 0 && (
                   <>
-                    <div style={{ padding: '12px 10px 6px', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ink-3)' }}>
+                    <div className="sidebar-section-title">
                       Done Today
                     </div>
                     {completedToday.map(p => {

@@ -91,7 +91,7 @@ export function Dashboard({ patients, appointments = [], allDoctors = [], onAddD
                     <div style={{
                       width: `${(m.count / maxMktg) * 100}%`,
                       height: '100%',
-                      background: 'var(--gold)',
+                      background: 'linear-gradient(90deg, var(--accent) 0%, var(--primary) 100%)',
                       borderRadius: 4,
                       transition: 'width 0.6s var(--ease)'
                     }} />
@@ -217,7 +217,7 @@ export function Dashboard({ patients, appointments = [], allDoctors = [], onAddD
                       <td>
                         {analytics.averageRating > 0 ? (
                           <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <span style={{ color: 'var(--gold)', fontSize: 13 }}>★</span>
+                            <span style={{ color: '#F59E0B', fontSize: 13 }}>★</span>
                             {analytics.averageRating}
                           </span>
                         ) : '—'}
