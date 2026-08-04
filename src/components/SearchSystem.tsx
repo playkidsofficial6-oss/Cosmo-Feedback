@@ -16,26 +16,31 @@ type Filter = typeof STATUS_FILTERS[number];
 export function SearchSystem({ patients, appointments = [], onSelectPatient, onEditPatient, onDeletePatient, activePatientId }: Props) {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('All');
-  const [preview, setPreview] = useState<Patient | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(activePatientId || null);
 
   useEffect(() => {
-    if (preview && !patients.some(p => p.id === preview.id)) {
-      setPreview(null);
+    if (activePatientId) {
+      setSelectedId(activePatientId);
     }
-  }, [patients, preview]);
+  }, [activePatientId]);
+
+  const preview = useMemo(() => {
+    if (!selectedId) return null;
+    return patients.find(p => p.id === selectedId || (p as any)._id === selectedId) || null;
+  }, [patients, selectedId]);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
     return patients.filter(p => {
-      const matchQ = !q ||
-        p.name.toLowerCase().includes(q);
+      const matchQ = !q || p.name.toLowerCase().includes(q);
       const matchF = filter === 'All' || p.reviewStatus === filter;
       return matchQ && matchF;
     });
-  }, [patients, appointments, query, filter]);
+  }, [patients, query, filter]);
 
   const handleSelect = (p: Patient) => {
-    setPreview(p);
+    const id = p.id || (p as any)._id;
+    setSelectedId(id);
     onSelectPatient(p);
   };
 
@@ -85,7 +90,7 @@ export function SearchSystem({ patients, appointments = [], onSelectPatient, onE
           {filtered.map(p => (
             <div
               key={p.id}
-              className={`dir-item ${p.id === (preview?.id ?? activePatientId) ? 'selected' : ''}`}
+              className={`dir-item ${p.id === selectedId || (p as any)._id === selectedId ? 'selected' : ''}`}
               onClick={() => handleSelect(p)}
             >
               <div className="dir-avatar">
