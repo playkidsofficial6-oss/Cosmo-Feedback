@@ -64,8 +64,7 @@ function MainApp() {
 
   useEffect(() => {
     if (!activePatient && patients.length > 0) {
-      const first = patients.find(p => todaysPatientIds.has(p.id) && p.reviewStatus === 'Pending')
-        ?? patients.find(p => p.reviewStatus === 'Pending');
+      const first = patients.find(p => todaysPatientIds.has(p.id) && p.reviewStatus === 'Pending');
       if (first) setActivePatient(first);
     }
   }, [patients, appointments, activePatient, todaysPatientIds]);
@@ -90,11 +89,10 @@ function MainApp() {
     await mutate();
     showToast(`Check-out saved — ${updated.name}`);
 
-    // Attempt to set next patient
+    // Attempt to set next patient from today's queue
     const freshDb = await fetcher('/patients');
-    const next = freshDb.find((p: any) => todaysPatientIds.has(p.id) && p.reviewStatus === 'Pending' && p.id !== id)
-      ?? freshDb.find((p: any) => p.reviewStatus === 'Pending' && p.id !== id);
-    setActivePatient(next ?? updated);
+    const next = freshDb.find((p: any) => todaysPatientIds.has(p.id) && p.reviewStatus === 'Pending' && p.id !== id);
+    setActivePatient(next ?? null);
   };
 
   const handleAddDoctor = () => {
