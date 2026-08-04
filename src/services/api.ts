@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = "http://localhost:4000" //|| `https://api.feedback.cosmohome.in`;
+const API_URL = `https://api.feedback.cosmohome.in`;
 
 export const api = axios.create({
   baseURL: API_URL,
