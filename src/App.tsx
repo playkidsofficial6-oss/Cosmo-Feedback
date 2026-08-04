@@ -141,7 +141,7 @@ function MainApp() {
       <header className="topbar">
         <div className="topbar-brand">
           <img src="/logo.svg" alt="Cosmo Home Skin Care Centre" className="topbar-logo-img" />
-          <span className="topbar-name">Cosmo Home Skin Care Centre</span>
+          <span className="topbar-name">Cosmo Home</span>
         </div>
 
         <nav className="topbar-nav">
