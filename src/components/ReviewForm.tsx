@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import type { Patient } from '../services/db';
-import { getMarketingSources, getTreatmentList } from '../services/db';
+import { getMarketingSources } from '../services/db';
 
 interface Props {
   patient: Patient;
@@ -31,8 +31,9 @@ export function ReviewForm({ patient, onSave }: Props) {
   const [notes,    setNotes]    = useState(patient.reviewNotes ?? '');
   const [saved,    setSaved]    = useState(false);
 
+  const [isEditing, setIsEditing] = useState(patient.reviewStatus === 'Pending');
   const sources    = getMarketingSources();
-  const treatments = getTreatmentList();
+
 
   const toggleTag = (t: string) =>
     setTags(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
@@ -49,6 +50,69 @@ export function ReviewForm({ patient, onSave }: Props) {
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
+
+  if (!isEditing) {
+    return (
+      <div className="section-card fade-in" style={{ position: 'relative' }}>
+        <div className="section-head">
+          <span className="section-title">Check-out Summary</span>
+          <button 
+            className="btn-ghost" 
+            style={{ padding: '4px 12px', fontSize: '11px', position: 'absolute', right: '16px', top: '12px' }} 
+            onClick={() => setIsEditing(true)}
+          >
+            Edit
+          </button>
+        </div>
+        <div className="section-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div>
+            <div className="field-label">Review Outcome</div>
+            <div className="field-value">
+              {patient.reviewStatus === 'Yes' ? `⭐ Left Review (${patient.reviewStars} Stars)` : '✕ Declined'}
+            </div>
+          </div>
+          
+          {patient.marketingSource && (
+            <div>
+              <div className="field-label">Source</div>
+              <div className="field-value">{patient.marketingSource}</div>
+            </div>
+          )}
+          
+          {patient.vipTags && patient.vipTags.length > 0 && (
+            <div>
+              <div className="field-label">Quick Notes</div>
+              <div className="field-value">
+                <div className="chips-wrap" style={{ marginTop: '4px' }}>
+                  {patient.vipTags.map(t => (
+                    <span key={t} className="chip selected-gold" style={{ cursor: 'default' }}>{t}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <div className="field-label">Purchase Status</div>
+            <div className="field-value">
+              <span className="chip selected" style={{ cursor: 'default', display: 'inline-block', marginTop: '4px' }}>
+                {patient.purchaseStatus}
+              </span>
+            </div>
+          </div>
+
+          {patient.reviewNotes && (
+            <div>
+              <div className="field-label">Staff Notes</div>
+              <div className="field-value" style={{ whiteSpace: 'pre-wrap', background: 'var(--surface)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                {patient.reviewNotes}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="section-card fade-in" style={{ position: 'relative' }}>
@@ -177,7 +241,7 @@ export function ReviewForm({ patient, onSave }: Props) {
         />
 
         <button id="btn-save-checkout" className="btn-save" style={{ width: '100%', marginTop: 14 }} onClick={handleSave}>
-          Save Check-out
+          Complete
         </button>
       </div>
     </div>

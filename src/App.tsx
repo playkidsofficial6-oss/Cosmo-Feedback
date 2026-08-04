@@ -1,36 +1,46 @@
-import React, { useState, useEffect } from 'react';
-import {
-  getDatabase, checkoutPatient, createPatient, resetDatabase,
-  getDoctorList, getTreatmentList
-} from './services/db';
+import { useState, useEffect, useMemo } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import Cookies from 'js-cookie';
+import useSWR from 'swr';
+import { api, fetcher } from './services/api';
 import type { Patient } from './services/db';
-import { Login }            from './components/Login';
-import { PatientCard }      from './components/PatientCard';
-import { ReviewForm }       from './components/ReviewForm';
-import { QRCodeGenerator }  from './components/QRCodeGenerator';
-import { Dashboard }        from './components/Dashboard';
-import { SearchSystem }     from './components/SearchSystem';
 
-type View = 'checkout' | 'directory' | 'dashboard';
-type Role = 'reception' | 'manager' | 'admin';
+import { Login } from './components/Login';
+import { PatientCard } from './components/PatientCard';
+import { ReviewForm } from './components/ReviewForm';
+import { QRCodeGenerator } from './components/QRCodeGenerator';
+import { Dashboard } from './components/Dashboard';
+import { SearchSystem } from './components/SearchSystem';
+import { RegisterPatientModal } from './components/RegisterPatientModal';
+import { AppointmentModal } from './components/AppointmentModal';
+import { DoctorModal } from './components/DoctorModal';
+import { AppointmentsView } from './components/AppointmentsView';
 
-export default function App() {
-  const [role,      setRole]      = useState<Role | null>(null);
-  const [staffName, setStaffName] = useState('');
-  const [view,      setView]      = useState<View>('checkout');
+type View = 'checkout' | 'directory' | 'appointments' | 'dashboard';
 
-  const [patients,      setPatients]      = useState<Patient[]>([]);
+function MainApp() {
+  const navigate = useNavigate();
+  const userCookie = Cookies.get('user');
+  const user = userCookie ? JSON.parse(userCookie) : null;
+  const role = user?.role;
+
+
+  const [view, setView] = useState<View>(role === 'reception' ? 'checkout' : 'dashboard');
   const [activePatient, setActivePatient] = useState<Patient | null>(null);
-  const [reviewUrl,     setReviewUrl]     = useState(
-    'https://search.google.com/local/writereview?placeid=ChIJiQ139bN1RDkR8eKj2_tD_r0'
+  const [reviewUrl] = useState(
+    'https://g.page/r/CRrsj4jmltT8EBM/review'
   );
 
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [newName,      setNewName]      = useState('');
-  const [newPhone,     setNewPhone]     = useState('');
-  const [newType,      setNewType]      = useState<Patient['patientType']>('First Time Visitor');
-  const [newDoctor,    setNewDoctor]    = useState('');
-  const [newCategory,  setNewCategory]  = useState('');
+  const { data: patients = [], mutate } = useSWR<Patient[]>('/patients', fetcher);
+  const { data: appointments = [], mutate: mutateAppointments } = useSWR<any[]>('/appointments', fetcher);
+  const { data: allDoctors = [], mutate: mutateDoctors } = useSWR<any[]>('/doctors', fetcher);
+
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
+  const [preselectedPatientId, setPreselectedPatientId] = useState<string | null>(null);
+
+  const [showDoctorModal, setShowDoctorModal] = useState(false);
+  const [doctorToEdit, setDoctorToEdit] = useState<any>(null);
 
   const [toast, setToast] = useState<string | null>(null);
 
@@ -39,97 +49,110 @@ export default function App() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  useEffect(() => {
-    const db = getDatabase();
-    setPatients(db);
-    const todayStr = new Date().toISOString().split('T')[0];
-    const first = db.find(p => p.visitDate === todayStr && p.reviewStatus === 'Pending')
-                ?? db.find(p => p.reviewStatus === 'Pending');
-    if (first) setActivePatient(first);
-  }, []);
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todaysPatientIds = useMemo(() => new Set(
+    appointments
+      .filter(a => a.createdAt && a.createdAt.startsWith(todayStr))
+      .map(a => a.patient?.id || a.patient?._id || a.patient)
+  ), [appointments, todayStr]);
 
-  const handleLogin = (r: Role, name: string) => {
-    setRole(r);
-    setStaffName(name);
-    setView(r === 'reception' ? 'checkout' : 'dashboard');
+  useEffect(() => {
+    if (!user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
+
+  useEffect(() => {
+    if (!activePatient && patients.length > 0) {
+      const first = patients.find(p => todaysPatientIds.has(p.id) && p.reviewStatus === 'Pending')
+        ?? patients.find(p => p.reviewStatus === 'Pending');
+      if (first) setActivePatient(first);
+    }
+  }, [patients, appointments, activePatient, todaysPatientIds]);
+
+  const activeAppointment = useMemo(() => {
+    if (!activePatient) return null;
+    return appointments
+      .filter(a => (a.patient?.id || a.patient?._id || a.patient) === activePatient.id)
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())[0];
+  }, [activePatient, appointments]);
+
+  if (!user) return null;
+
+  const handleLogout = () => {
+    Cookies.remove('user');
+    navigate('/');
   };
 
-  const handleLogout = () => { setRole(null); setStaffName(''); };
-
-  const handleSave = (id: string, updates: Partial<Patient>) => {
-    const updated = checkoutPatient(id, updates);
-    const db = getDatabase();
-    setPatients(db);
+  const handleSave = async (id: string, updates: Partial<Patient>) => {
+    const res = await api.put(`/patients/${id}`, { ...updates, checkoutTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+    const updated = res.data;
+    await mutate();
     showToast(`Check-out saved — ${updated.name}`);
-    const todayStr = new Date().toISOString().split('T')[0];
-    const next = db.find(p => p.visitDate === todayStr && p.reviewStatus === 'Pending' && p.id !== id)
-              ?? db.find(p => p.reviewStatus === 'Pending' && p.id !== id);
+
+    // Attempt to set next patient
+    const freshDb = await fetcher('/patients');
+    const next = freshDb.find((p: any) => todaysPatientIds.has(p.id) && p.reviewStatus === 'Pending' && p.id !== id)
+      ?? freshDb.find((p: any) => p.reviewStatus === 'Pending' && p.id !== id);
     setActivePatient(next ?? updated);
   };
 
-  const handleReset = () => {
-    const fresh = resetDatabase();
-    setPatients(fresh);
-    const pending = fresh.find(p => p.reviewStatus === 'Pending');
-    setActivePatient(pending ?? fresh[0]);
-    showToast('Demo data reset.');
+  const handleAddDoctor = () => {
+    setDoctorToEdit(null);
+    setShowDoctorModal(true);
   };
 
-  const handleAddPatient = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newName || !newPhone) return;
-    const doctors    = getDoctorList();
-    const treatments = getTreatmentList();
-    const created = createPatient({
-      name: newName,
-      phone: newPhone,
-      doctorName: newDoctor || doctors[0],
-      treatmentCategory: newCategory || treatments[0],
-      patientType: newType,
-      photoUrl: null,
-      reviewStatus: 'Pending',
-      reviewStars: null,
-      reviewNotes: null,
-      marketingSource: null,
-      treatmentInterest: [newCategory || treatments[0]],
-      purchaseStatus: 'Consultation Only',
-      vipTags: newType === 'VIP' || newType === 'Celebrity' ? [newType] : [],
-      quickNotes: null,
-    });
-    const db = getDatabase();
-    setPatients(db);
-    setActivePatient(created);
-    setShowAddModal(false);
-    setNewName(''); setNewPhone(''); setNewDoctor(''); setNewCategory('');
-    setNewType('First Time Visitor');
-    setView('checkout');
-    showToast(`${created.name} added to queue.`);
+  const handleEditDoctor = (doc: any) => {
+    setDoctorToEdit(doc);
+    setShowDoctorModal(true);
   };
 
-  const todayStr             = new Date().toISOString().split('T')[0];
-  const pendingQueue         = patients.filter(p => p.visitDate === todayStr && p.reviewStatus === 'Pending');
-  const completedToday       = patients.filter(p => p.visitDate === todayStr && p.reviewStatus !== 'Pending');
-  const doctors              = getDoctorList();
-  const treatments           = getTreatmentList();
+  const handleSaveDoctor = async (data: any) => {
+    if (doctorToEdit) {
+      await api.put(`/doctors/${doctorToEdit._id}`, data);
+      showToast(`Doctor updated to: ${data.name}`);
+    } else {
+      await api.post('/doctors', data);
+      showToast(`Doctor added: ${data.name}`);
+    }
+    await mutateDoctors();
+    setShowDoctorModal(false);
+  };
 
-  if (!role) return <Login onLogin={handleLogin} />;
+  const handleDeleteDoctor = async (docId: string) => {
+    if (!window.confirm("Are you sure you want to remove this doctor?")) return;
+    await api.put(`/doctors/${docId}`, { isDeleted: true });
+    await mutateDoctors();
+    showToast(`Doctor removed.`);
+  };
+
+  const pendingQueue = patients.filter(p => todaysPatientIds.has(p.id) && p.reviewStatus === 'Pending');
+  const completedToday = patients.filter(p => todaysPatientIds.has(p.id) && p.reviewStatus !== 'Pending');
 
   return (
     <div className="app-shell">
+      <div className="workspace-bg-blobs">
+        <div className="bg-blob blob-1"></div>
+        <div className="bg-blob blob-2"></div>
+        <div className="bg-blob blob-3"></div>
+      </div>
 
       {/* ── TOPBAR ─────────────────────────────────────────── */}
       <header className="topbar">
         <div className="topbar-brand">
-          <div className="topbar-logo">C</div>
-          <span className="topbar-name">Cosmo Homes</span>
+          <img src="/logo.svg" alt="Cosmo Home Skin Care Centre" className="topbar-logo-img" />
+          <span className="topbar-name">Cosmo Home Skin Care Centre</span>
         </div>
 
         <nav className="topbar-nav">
-          <button id="nav-checkout"  className={`nav-pill ${view === 'checkout'   ? 'active' : ''}`} onClick={() => setView('checkout')}>
-            Check-out
+          <button id="nav-checkout" className={`nav-pill ${view === 'checkout' ? 'active' : ''}`} onClick={() => setView('checkout')}>
+            Dashboard
           </button>
-          <button id="nav-directory" className={`nav-pill ${view === 'directory'  ? 'active' : ''}`} onClick={() => setView('directory')}>
+          <button id="nav-directory" className={`nav-pill ${view === 'directory' ? 'active' : ''}`} onClick={() => setView('directory')}>
             Directory
+          </button>
+          <button id="nav-appointments" className={`nav-pill ${view === 'appointments' ? 'active' : ''}`} onClick={() => setView('appointments')}>
+            Appointments
           </button>
           {(role === 'manager' || role === 'admin') && (
             <button id="nav-dashboard" className={`nav-pill ${view === 'dashboard' ? 'active' : ''}`} onClick={() => setView('dashboard')}>
@@ -140,12 +163,12 @@ export default function App() {
 
         <div className="topbar-right">
           <span className="role-chip">{role}</span>
-          <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{staffName}</span>
+          {/* <span style={{ fontSize: 13, color: 'var(--ink-2)' }}>{staffName}</span> */}
           <button id="btn-logout" className="btn-icon" title="Log Out" onClick={handleLogout}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-              <polyline points="16 17 21 12 16 7"/>
-              <line x1="21" y1="12" x2="9" y2="12"/>
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
             </svg>
           </button>
         </div>
@@ -153,11 +176,8 @@ export default function App() {
 
       {/* ── WORKSPACE ──────────────────────────────────────── */}
       <div className="workspace">
-
-        {/* ── CHECKOUT VIEW ──────────────────────────────── */}
         {view === 'checkout' && (
           <>
-            {/* Queue sidebar */}
             <aside className="queue-panel">
               <div className="panel-header">
                 <div className="panel-title">Today's Queue</div>
@@ -173,6 +193,10 @@ export default function App() {
                 {pendingQueue.map(p => {
                   const isVip = p.patientType === 'VIP' || p.patientType === 'Celebrity';
                   const initials = p.name.split(' ').map(n => n[0]).join('').slice(0, 2);
+                  const appts = appointments.filter(a => a.patient && (a.patient.id === p.id || a.patient._id === p.id || a.patient === p.id));
+                  const latestAppt = appts.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())[0];
+                  const doctorName = latestAppt?.doctor?.name || '';
+
                   return (
                     <div
                       key={p.id}
@@ -185,17 +209,16 @@ export default function App() {
                       </div>
                       <div className="q-info">
                         <div className="q-name">{p.name}</div>
-                        <div className="q-sub">{p.doctorName}</div>
+                        <div className="q-sub">{doctorName}</div>
                       </div>
                       {isVip && <span className="vip-dot" />}
                     </div>
                   );
                 })}
 
-                {/* Recently completed */}
                 {completedToday.length > 0 && (
                   <>
-                    <div style={{ padding: '12px 10px 6px', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ink-3)' }}>
+                    <div className="sidebar-section-title">
                       Done Today
                     </div>
                     {completedToday.map(p => {
@@ -207,7 +230,7 @@ export default function App() {
                           onClick={() => setActivePatient(p)}
                           style={{ opacity: 0.55 }}
                         >
-                          <div className="q-avatar">{p.photoUrl ? <img src={p.photoUrl} alt={p.name}/> : initials}</div>
+                          <div className="q-avatar">{p.photoUrl ? <img src={p.photoUrl} alt={p.name} /> : initials}</div>
                           <div className="q-info">
                             <div className="q-name">{p.name}</div>
                             <div className="q-sub" style={{ color: p.reviewStatus === 'Yes' ? 'var(--green)' : 'var(--red)' }}>
@@ -221,45 +244,42 @@ export default function App() {
                 )}
               </div>
 
-              <div className="panel-footer">
-                <button id="btn-add-patient" className="btn-add" onClick={() => setShowAddModal(true)}>
-                  + Register Walk-In
+              <div className="panel-footer" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <button id="btn-make-appointment" className="btn-add" onClick={() => setShowAppointmentModal(true)}>
+                  Make Appointment
+                </button>
+                <button id="btn-add-patient" className="btn-add" onClick={() => setShowRegisterModal(true)}>
+                  + Register Patient
                 </button>
               </div>
             </aside>
 
-            {/* Main checkout area */}
             <div className="checkout-area">
               {activePatient ? (
                 <>
-                  {/* Left: patient card + review form */}
                   <div className="checkout-left">
                     {toast && (
                       <div className="toast" style={{ marginBottom: 4 }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4A7C59" strokeWidth="2.5">
-                          <polyline points="20 6 9 17 4 12"/>
+                          <polyline points="20 6 9 17 4 12" />
                         </svg>
                         {toast}
                       </div>
                     )}
-                    <PatientCard patient={activePatient} />
-                    <ReviewForm patient={activePatient} onSave={handleSave} />
+                    <PatientCard key={`card-${activePatient.id}`} patient={activePatient} appointment={activeAppointment} />
+                    <ReviewForm key={`form-${activePatient.id}`} patient={activePatient} onSave={handleSave} />
                   </div>
-
-                  {/* Right: QR code */}
                   <div className="checkout-right">
                     <QRCodeGenerator
                       reviewUrl={reviewUrl}
-                      onUrlChange={setReviewUrl}
-                      patientName={activePatient.name}
                     />
                   </div>
                 </>
               ) : (
                 <div className="no-selection" style={{ flex: 1 }}>
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--border)" strokeWidth="1.2">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                    <polyline points="9 22 9 12 15 12 15 22"/>
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                    <polyline points="9 22 9 12 15 12 15 22" />
                   </svg>
                   <p>Select a patient from the queue to begin check-out</p>
                 </div>
@@ -268,10 +288,10 @@ export default function App() {
           </>
         )}
 
-        {/* ── DIRECTORY VIEW ─────────────────────────────── */}
         {view === 'directory' && (
           <SearchSystem
             patients={patients}
+            appointments={appointments}
             activePatientId={activePatient?.id}
             onSelectPatient={(p) => {
               setActivePatient(p);
@@ -280,64 +300,63 @@ export default function App() {
           />
         )}
 
-        {/* ── DASHBOARD VIEW ─────────────────────────────── */}
+        {view === 'appointments' && (
+          <AppointmentsView />
+        )}
+
         {view === 'dashboard' && (
-          <Dashboard onResetDb={handleReset} />
+          <Dashboard
+            patients={patients}
+            appointments={appointments}
+            allDoctors={allDoctors}
+            onAddDoctor={handleAddDoctor}
+            onEditDoctor={handleEditDoctor}
+            onDeleteDoctor={handleDeleteDoctor}
+          />
         )}
       </div>
 
-      {/* ── ADD PATIENT MODAL ──────────────────────────────── */}
-      {showAddModal && (
-        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="modal-box" onClick={e => e.stopPropagation()}>
-            <div className="modal-title">Register Walk-In</div>
-            <div className="modal-sub">Add a patient to today's check-out queue</div>
+      {showRegisterModal && (
+        <RegisterPatientModal
+          onClose={() => setShowRegisterModal(false)}
+          onSuccess={(patientId, patientName) => {
+            mutate();
+            setPreselectedPatientId(patientId);
+            setShowRegisterModal(false);
+            setShowAppointmentModal(true);
+            showToast(`${patientName} registered. Ready to schedule appointment.`);
+          }}
+        />
+      )}
 
-            <form onSubmit={handleAddPatient}>
-              <label className="form-label">Full Name *</label>
-              <input id="modal-name" className="form-control" placeholder="e.g. Priya Kapoor" value={newName}
-                onChange={e => setNewName(e.target.value)} required />
+      {showAppointmentModal && (
+        <AppointmentModal
+          patients={patients}
+          allDoctors={allDoctors}
+          onClose={() => { setShowAppointmentModal(false); setPreselectedPatientId(null); }}
+          onOpenAddPatient={() => { setShowAppointmentModal(false); setShowRegisterModal(true); }}
+          preselectedPatientId={preselectedPatientId}
+          onAppointmentCreated={() => { mutate(); mutateAppointments(); setShowAppointmentModal(false); setPreselectedPatientId(null); }}
+        />
+      )}
 
-              <label className="form-label">Phone Number *</label>
-              <input id="modal-phone" className="form-control" placeholder="+91 98xx xxxxxx" value={newPhone}
-                onChange={e => setNewPhone(e.target.value)} required />
-
-              <label className="form-label">Consulting Doctor</label>
-              <select id="modal-doctor" className="form-control" value={newDoctor}
-                onChange={e => setNewDoctor(e.target.value)}>
-                {doctors.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-
-              <label className="form-label">Treatment Category</label>
-              <select id="modal-category" className="form-control" value={newCategory}
-                onChange={e => setNewCategory(e.target.value)}>
-                {treatments.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-
-              <label className="form-label">Patient Type</label>
-              <select id="modal-type" className="form-control" value={newType}
-                onChange={e => setNewType(e.target.value as Patient['patientType'])}>
-                <option value="First Time Visitor">First Time Visitor</option>
-                <option value="Returning Patient">Returning Patient</option>
-                <option value="Regular">Regular</option>
-                <option value="VIP">VIP</option>
-                <option value="Celebrity">Celebrity</option>
-                <option value="Referral">Referral</option>
-                <option value="Corporate">Corporate</option>
-              </select>
-
-              <div className="modal-actions">
-                <button type="button" className="btn-ghost" onClick={() => setShowAddModal(false)}>
-                  Cancel
-                </button>
-                <button id="modal-submit" type="submit" className="btn-save" style={{ flex: 1 }}>
-                  Add to Queue
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+      {showDoctorModal && (
+        <DoctorModal
+          initialData={doctorToEdit}
+          onClose={() => setShowDoctorModal(false)}
+          onSave={handleSaveDoctor}
+        />
       )}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Login />} />
+      <Route path="/dashboard" element={<MainApp />} />
+      <Route path="*" element={<Navigate to="/" />} />
+    </Routes>
   );
 }
