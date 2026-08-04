@@ -1,9 +1,13 @@
-const CACHE_NAME = 'cosmo-reviews-cache-v1';
+const CACHE_NAME = 'cosmo-reviews-cache-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/logo.svg'
+  '/logo.svg',
+  '/pwa-192x192.png',
+  '/pwa-512x512.png',
+  '/pwa-maskable-512x512.png',
+  '/apple-touch-icon.png'
 ];
 
 self.addEventListener('install', (event) => {
@@ -29,22 +33,22 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests and local assets (or Google Fonts)
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
-  
-  // Skip caching for external API endpoints if any, but cache local files
+
+  // Skip caching for external API requests
+  if (url.pathname.startsWith('/api') || url.pathname.includes('/auth')) return;
+
   if (url.origin === self.location.origin || url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('fonts.gstatic.com')) {
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
         if (cachedResponse) {
-          // Fetch update in background for next time (stale-while-revalidate)
           fetch(event.request).then((networkResponse) => {
             if (networkResponse.status === 200) {
               caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
             }
-          }).catch(() => {/* Ignore network errors if offline */});
+          }).catch(() => {/* Offline fallback */});
           
           return cachedResponse;
         }
@@ -59,7 +63,6 @@ self.addEventListener('fetch', (event) => {
           });
           return networkResponse;
         }).catch(() => {
-          // If offline and request is HTML/navigation, serve root
           if (event.request.mode === 'navigate') {
             return caches.match('/');
           }
