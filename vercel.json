@@ -1,5 +1,5 @@
 {
   "buildCommand": "yarn install && yarn build",
-  "outputDirectory": "./dist",
+  "outputDirectory": "dist",
   "framework": "vite"
 }
