@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface Props {
   reviewUrl: string;
@@ -39,23 +40,10 @@ function SingleQRPanel({
               style={{ width: '100%', height: '100%', display: 'block' }}
             />
           </div>
-
-          {/* <p className="qr-prompt">
-            {type === 'google'
-              ? `"${patientName}, could you please scan this and leave us a quick review?"`
-              : `"${patientName}, could you please scan this and follow us on Instagram?"`}
-          </p> */}
         </div>
-
-        {/* <div className="qr-link-row" style={{ marginTop: 0 }}>
-          <span className="qr-link-text">{activeUrl}</span>
-          <button className="qr-copy" onClick={handleCopy}>
-            {copied ? '✓ Copied' : 'Copy'}
-          </button>
-        </div> */}
       </div>
 
-      {fullscreen && (
+      {fullscreen && createPortal(
         <div className="fullscreen-overlay" onClick={() => setFullscreen(false)}>
           <button className="fullscreen-close" onClick={() => setFullscreen(false)}>✕</button>
           <div className="fullscreen-box" onClick={e => e.stopPropagation()}>
@@ -66,7 +54,8 @@ function SingleQRPanel({
             </div>
             <p style={{ fontSize: 11, color: 'var(--ink-3)', wordBreak: 'break-all' }}>{activeUrl}</p>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

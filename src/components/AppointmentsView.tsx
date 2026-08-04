@@ -137,17 +137,16 @@ export function AppointmentsView() {
                 <th>Patient</th>
                 <th>Doctor</th>
                 <th>Treatment</th>
-                <th>Status</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: '30px', color: 'var(--ink-3)' }}>Loading appointments...</td>
+                  <td colSpan={4} style={{ textAlign: 'center', padding: '30px', color: 'var(--ink-3)' }}>Loading appointments...</td>
                 </tr>
               ) : appointments.length === 0 ? (
                 <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: '30px', color: 'var(--ink-3)' }}>No appointments found.</td>
+                  <td colSpan={4} style={{ textAlign: 'center', padding: '30px', color: 'var(--ink-3)' }}>No appointments found.</td>
                 </tr>
               ) : (
                 appointments.map((appt: any) => {
@@ -162,11 +161,6 @@ export function AppointmentsView() {
                       <td style={{ fontWeight: 500, color: 'var(--ink)' }}>{p?.name || 'Unknown'}</td>
                       <td>{appt.doctor?.name || 'Unassigned'}</td>
                       <td>{appt.treatmentCategory || '-'}</td>
-                      <td>
-                        <span className={`patient-badge ${appt.status === 'Completed' ? 'badge-new' : 'badge-regular'}`}>
-                          {appt.status || 'Scheduled'}
-                        </span>
-                      </td>
                     </tr>
                   );
                 })

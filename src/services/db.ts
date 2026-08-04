@@ -25,6 +25,8 @@ export interface Patient {
   vipTags: string[];
   checkoutTime: string | null;
   createdAt: Date | null;
+  isDeleted?: boolean;
+  deletedAt?: string | null;
 }
 
 
