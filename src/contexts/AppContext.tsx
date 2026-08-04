@@ -152,6 +152,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())[0];
   }, [activePatient, appointments]);
 
+  // Keep activePatient updated with fresh data from patients array
+  useEffect(() => {
+    if (activePatient) {
+      const activeId = activePatient.id || (activePatient as any)._id;
+      const updated = patients.find(p => p.id === activeId || (p as any)._id === activeId);
+      if (updated && updated !== activePatient) {
+        setActivePatient(updated);
+      }
+    }
+  }, [patients]);
+
   // Auto-select first pending patient
   useEffect(() => {
     if (!activePatient && patients.length > 0) {
